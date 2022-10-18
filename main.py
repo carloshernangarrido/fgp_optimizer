@@ -14,4 +14,4 @@ if __name__ == '__main__':
     mesh = (cl.Mesh(length, n_dof, total_mass))
     mesh.fill_elements('k', k).fill_elements('gap', {'value': .3, 'contact_stiffness': 33.})
 ...
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+

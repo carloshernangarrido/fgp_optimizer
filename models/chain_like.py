@@ -1,8 +1,10 @@
-from typing import Union, Tuple, List, Dict
+from typing import Union, List
 import numpy as np
 
 
-element_types: dict = {'k': {'description': 'linear stiffness',
+element_types: dict = {'m': {'description': 'mass',
+                             'props': ['value']},
+                       'k': {'description': 'linear stiffness',
                              'props': ['value']},
                        'c': {'description': 'linear viscous damping',
                              'props': ['value']},
@@ -10,6 +12,8 @@ element_types: dict = {'k': {'description': 'linear stiffness',
                                'props': ['value']},
                        'gap': {'description': 'closing gap contact',
                                'props': ['value', 'contact_stiffness']}}
+
+constraint_types = ['imposed_displacement']
 
 
 class Element:
@@ -43,6 +47,8 @@ class Element:
         :param kwargs: dict containing 2 or more responses from: 'u_i', 'u_j', 'u_dot_i', 'u_dot_j', as float.
         :return: float force exerted by the element.
         """
+        if self.element_type == 'm':
+            raise ValueError('inertial pseudo-force is not supported')
         try:
             if self.element_type == 'k':
                 return self.props['value']*(kwargs['u_i'] - kwargs['u_j'])
@@ -81,11 +87,11 @@ class Mesh:
         assert isinstance(total_mass, (int, float)) and total_mass > 0
 
         self.n_dof = n_dof
-        self.masses = np.array(n_dof*[total_mass/n_dof])
         self.coordinates = np.linspace(0, length, n_dof)
         self.displacements = np.zeros(n_dof)
         self.velocities = np.zeros(n_dof)
-        self.elements = []
+        element_mass = total_mass/(n_dof - 1)
+        self.elements = [Element('m', i=i, j=i+1, props=element_mass) for i in range(self.n_dof - 1)]
 
     def fill_elements(self, element_type, props_s: Union[List[Union[dict, float, int]], dict, float, int]):
         """
@@ -109,16 +115,30 @@ class Mesh:
         return self
 
 
-class Constraint:
-    def __init__(self, dofs: List[int], constraint_type: str, value: Union[int, float] = 0.0):
-        self.dofs = dofs
+class DofWise:
+    def __init__(self, dof_s: Union[int, List[int]]):
+        if isinstance(dof_s, int):
+            dof_s = [dof_s]
+        assert all([isinstance(dof, int) and dof >= 0 for dof in dof_s])
+        self.dof_s = dof_s
+
+
+class Constraint(DofWise):
+    def __init__(self, dof_s: List[int], constraint_type: str = 'imposed_displacement', value: Union[int, float] = 0.0):
+        super().__init__(dof_s)
+        assert constraint_type in constraint_types
+        assert isinstance(value, (float, int))
+
         self.constraint_type = constraint_type
         self.value = float(value)
 
 
-class Load:
-    def __init__(self):
-        ...
+class Load(DofWise):
+    def __init__(self, dof_s: List[int], t, force):
+        super().__init__(dof_s)
+        assert np.ndim(t) == 1, 't must be 1D array like'
+        assert np.ndim(force) == 1, 'force must be 1D array like'
+        assert len(t) == len(force)
 
 
 class Model:
