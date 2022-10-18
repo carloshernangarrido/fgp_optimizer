@@ -68,7 +68,7 @@ class Element:
 
 
 class Mesh:
-    def __init__(self, length: float, n_dof: int, total_mass: float):
+    def __init__(self, length: Union[float, int], n_dof: int, total_mass: Union[float, int]):
         """
         Creates a Mesh object that represents a 1D deformable body.
 
@@ -76,6 +76,10 @@ class Mesh:
         :param length: Total length of the body
         :param n_dof: Number of degrees of freedom.
         """
+        assert isinstance(length, (int, float)) and length > 0
+        assert isinstance(n_dof, int) and n_dof > 0
+        assert isinstance(total_mass, (int, float)) and total_mass > 0
+
         self.n_dof = n_dof
         self.masses = np.array(n_dof*[total_mass/n_dof])
         self.coordinates = np.linspace(0, length, n_dof)
@@ -105,4 +109,27 @@ class Mesh:
         return self
 
 
-# class
+class Constraint:
+    def __init__(self, dofs: List[int], constraint_type: str, value: Union[int, float] = 0.0):
+        self.dofs = dofs
+        self.constraint_type = constraint_type
+        self.value = float(value)
+
+
+class Load:
+    def __init__(self):
+        ...
+
+
+class Model:
+    def __init__(self, mesh: Mesh, constraints: List[Constraint] = None, loads: List[Load] = None):
+        assert isinstance(mesh, Mesh)
+        assert isinstance(constraints, (list, Constraint)) or constraints is None
+        assert isinstance(loads, (list, Load)) or loads is None
+
+        self.mesh = mesh
+        self.constraints = [] if constraints is None else constraints
+        self.loads = [] if loads is None else loads
+
+        assert all([isinstance(constraint, Constraint) for constraint in self.constraints])
+        assert all([isinstance(load, Load) for load in self.loads])
