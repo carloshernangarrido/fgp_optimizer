@@ -1,16 +1,17 @@
-# This is a sample Python script.
-
-# Press Mayús+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from models import chain_like as cl
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+n_dof = 10
+length = 10
+total_mass = 1
+k = 10
+c = .1
+muN = 5
+gap = {'value': 0.1*(length/(n_dof-1)),
+       'contact_stiffness': 10*k}
 
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
+    mesh = (cl.Mesh(length, n_dof, total_mass))
+    mesh.fill_elements('k', k).fill_elements('gap', {'value': .3, 'contact_stiffness': 33.})
+...
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
