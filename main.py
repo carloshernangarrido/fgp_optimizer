@@ -13,5 +13,7 @@ gap = {'value': 0.1*(length/(n_dof-1)),
 if __name__ == '__main__':
     mesh = (cl.Mesh(length, n_dof, total_mass))
     mesh.fill_elements('k', k).fill_elements('gap', {'value': .3, 'contact_stiffness': 33.})
+    const = cl.Constraint(0)
+    model = cl.Model(mesh, const)
 ...
 

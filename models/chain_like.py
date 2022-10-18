@@ -124,7 +124,7 @@ class DofWise:
 
 
 class Constraint(DofWise):
-    def __init__(self, dof_s: List[int], constraint_type: str = 'imposed_displacement', value: Union[int, float] = 0.0):
+    def __init__(self, dof_s, constraint_type: str = 'imposed_displacement', value: Union[int, float] = 0.0):
         super().__init__(dof_s)
         assert constraint_type in constraint_types
         assert isinstance(value, (float, int))
@@ -142,14 +142,17 @@ class Load(DofWise):
 
 
 class Model:
-    def __init__(self, mesh: Mesh, constraints: List[Constraint] = None, loads: List[Load] = None):
+    def __init__(self, mesh: Mesh, constraints: Union[Constraint, List[Constraint]] = None,
+                 loads: Union[Load, List[Load]] = None):
         assert isinstance(mesh, Mesh)
         assert isinstance(constraints, (list, Constraint)) or constraints is None
         assert isinstance(loads, (list, Load)) or loads is None
 
         self.mesh = mesh
         self.constraints = [] if constraints is None else constraints
+        self.constraints = [self.constraints] if isinstance(constraints, Constraint) else constraints
         self.loads = [] if loads is None else loads
+        self.loads = [self.loads] if isinstance(loads, Load) else self.loads
 
         assert all([isinstance(constraint, Constraint) for constraint in self.constraints])
         assert all([isinstance(load, Load) for load in self.loads])
