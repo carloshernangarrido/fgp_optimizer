@@ -15,6 +15,8 @@ element_types: dict = {'m': {'description': 'mass',
 
 constraint_types = ['imposed_displacement']
 
+initial_condition_types = ['displacement', 'velocity']
+
 
 class Element:
     def __init__(self, element_type: str, i: int, j: int, props: Union[None, dict, float, int]):
@@ -134,11 +136,26 @@ class Constraint(DofWise):
 
 
 class Load(DofWise):
-    def __init__(self, dof_s: List[int], t, force):
+    def __init__(self, dof_s, t, force):
         super().__init__(dof_s)
         assert np.ndim(t) == 1, 't must be 1D array like'
         assert np.ndim(force) == 1, 'force must be 1D array like'
         assert len(t) == len(force)
+
+        self.t = np.array(t)
+        self.force = np.array(force)
+
+
+class InitialCondition(DofWise):
+    """
+    All the initial conditions (displacements and velocities) are assumed 0.0, except for those defined using this.
+    """
+    def __init__(self, dof_s, ic_type: str = 'displacement', value: Union[float, int] = 0.0):
+        super().__init__(dof_s)
+        assert ic_type in initial_condition_types, f"Supported initial conditions types are: {initial_condition_types}, " \
+                                                   f"but {ic_type} was specified."
+        self.ic_type = ic_type
+        self.value = float(value)
 
 
 class Model:
@@ -156,3 +173,35 @@ class Model:
 
         assert all([isinstance(constraint, Constraint) for constraint in self.constraints])
         assert all([isinstance(load, Load) for load in self.loads])
+
+        self.n_dof = self.mesh.n_dof
+        self.n_elements = len(self.mesh.elements)
+        mass_elements = \
+            [self.mesh.elements[i] for i in range(self.n_elements) if self.mesh.elements[i].element_type == 'm']
+        self.dof_masses = np.zeros(self.n_dof)
+        for mass_element in mass_elements:
+            self.dof_masses[mass_element.i] += mass_element.props['value']
+            self.dof_masses[mass_element.j] += mass_element.props['value']
+        # massless elements connected to each dof
+        self.connectivity = [[i_e for i_e in range(self.n_elements) if
+                              (self.mesh.elements[i_e].element_type != 'm') and
+                              (self.mesh.elements[i_e].i == i_dof or self.mesh.elements[i_e].j == i_dof)]
+                             for i_dof in range(self.n_dof)]
+
+    def f(self, t: float, y: np.ndarray):
+        """
+        Function characterizing the set of ordinary differential equations defined as:
+
+        dy / dt = f(t, y)
+        y(t0) = y0
+
+        :param t: time
+        :param y: 1D vector of system states. y = [ displacements, velocities ]
+        :returns y_dot: 1D vector of derivative system states. y = [ velocities, -forces_sum/masses ]
+        """
+        forces_sum = np.zeros(self.n_dof)
+        # element forces
+        for i_dof in range(self.n_dof):
+            forces_sum[i_dof] += self.mesh.elements
+        # y_dot = np.hstack((y[0:self.n_dof], ...)
+        # return y_dot
