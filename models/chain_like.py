@@ -41,30 +41,30 @@ class Element:
     def __str__(self, ji: bool = False):
         return f'{self.element_type}_{self.j}_{self.i}' if ji else f'{self.element_type}_{self.i}_{self.j}'
 
-    def force_ij(self, **kwargs):
+    def force_ij(self, u, u_dot):
         """
         Returns the force exerted by the element depending on the displacement and velocities, and retain them in the
         attribute response_.
 
-        :param kwargs: dict containing 2 or more responses from: 'u_i', 'u_j', 'u_dot_i', 'u_dot_j', as float.
+        :param u: vector of displacements.
+        :param u_dot: vector of velocities.
         :return: float force exerted by the element.
         """
         if self.element_type == 'm':
             raise ValueError('inertial pseudo-force is not supported')
         try:
             if self.element_type == 'k':
-                return self.props['value']*(kwargs['u_i'] - kwargs['u_j'])
+                return self.props['value']*(u[self.i] - u[self.j])
             elif self.element_type == 'c':
-                return self.props['value']*(kwargs['u_dot_i'] - kwargs['u_dot_j'])
+                return self.props['value']*(u_dot[self.i] - u_dot[self.j])
             elif self.element_type == 'muN':
-                return self.props['value']*np.sign(kwargs['u_dot_i'] - kwargs['u_dot_j'])
+                return self.props['value']*np.sign(u_dot[self.i] - u_dot[self.j])
             elif self.element_type == 'gap':
-                contact_deformation = (kwargs['u_i'] - kwargs['u_j']) - self.props['value']
+                contact_deformation = (u[self.i] - u[self.j]) - self.props['value']
                 if contact_deformation > 0:
                     return self.props['contact_stiffness']*contact_deformation
                 else:
                     return 0.0
-            self.response_ = kwargs
         except KeyError:
             raise KeyError('Insufficient responses to calculate element force.')
 
@@ -196,12 +196,14 @@ class Model:
         y(t0) = y0
 
         :param t: time
-        :param y: 1D vector of system states. y = [ displacements, velocities ]
-        :returns y_dot: 1D vector of derivative system states. y = [ velocities, -forces_sum/masses ]
+        :param y: 1D vector of system states. y = [ u, u_dot ]
+        :returns y_dot: 1D vector of derivative system states. y = [ u_dot, -forces_sum/masses ]
         """
         forces_sum = np.zeros(self.n_dof)
         # element forces
         for i_dof in range(self.n_dof):
-            forces_sum[i_dof] += self.mesh.elements
-        # y_dot = np.hstack((y[0:self.n_dof], ...)
+            for i_e in self.connectivity[i_dof]:
+                forces_sum[i_dof] += self.mesh.elements[i_e].force_ij(u=y[0:self.n_dof],
+                                                                      u_dot=y[self.n_dof:])
+        # y_dot = np.hstack((y[0:self.n_dof], ...))
         # return y_dot
