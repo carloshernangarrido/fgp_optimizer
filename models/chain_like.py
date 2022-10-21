@@ -37,13 +37,18 @@ class Element:
         self.j = j
         self.props = props
         # Precalculated
+        self.update_props()
+        assert all([req_prop in props.keys() for req_prop in element_types[element_type]['props']]), 'Required prop'
+        assert all([prop in element_types[element_type]['props'] for prop in props.keys()]), 'Unsupported prop'
+
+    def update_props(self, prop: str = None):
+        if prop is not None:
+            self.props.pop(prop, None)
         if self.element_type == 'muN':
             if 'c_th' not in self.props.keys():
                 self.props.update({'c_th': self.props['value'] / self.props['v_th']})
             if 'v_th' not in self.props.keys():
                 self.props.update({'v_th': self.props['value'] / self.props['c_th']})
-        assert all([req_prop in props.keys() for req_prop in element_types[element_type]['props']]), 'Required prop'
-        assert all([prop in element_types[element_type]['props'] for prop in props.keys()]), 'Unsupported prop'
 
     def __str__(self, ji: bool = False):
         return f'{self.element_type}_{self.j}_{self.i}' if ji else f'{self.element_type}_{self.i}_{self.j}'
@@ -183,11 +188,15 @@ class InitialCondition(DofWise):
 class Model:
     def __init__(self, mesh: Mesh, constraints: Union[Constraint, List[Constraint]] = None,
                  loads: Union[Load, List[Load]] = None,
-                 initial_conditions: Union[InitialCondition, List[InitialCondition]] = None):
+                 initial_conditions: Union[InitialCondition, List[InitialCondition]] = None,
+                 options: dict = None):
         assert isinstance(mesh, Mesh)
         assert isinstance(constraints, (list, Constraint)) or constraints is None
         assert isinstance(loads, (list, Load)) or loads is None
         assert isinstance(initial_conditions, (list, InitialCondition)) or initial_conditions is None
+
+        self.options = {'t_vector': None, 'method': None} if options is None else options
+        assert isinstance(self.options, dict)
 
         self.mesh = mesh
         self.constraints = [] if constraints is None else constraints
@@ -201,6 +210,19 @@ class Model:
         assert all([isinstance(constraint, Constraint) for constraint in self.constraints])
         assert all([isinstance(load, Load) for load in self.loads])
 
+        self.sol = None
+        self.constraining = None
+        self.y0 = None
+        self.loading = None
+        self.connectivity = None
+        self.dof_masses = None
+        self.n_elements = None
+        self.n_dof = None
+        self.update_model()
+
+    def update_model(self):
+        for element in self.mesh.elements:
+            element.update_props()
         self.n_dof = self.mesh.n_dof
         self.n_elements = len(self.mesh.elements)
         mass_elements = \
@@ -276,7 +298,14 @@ class Model:
 
         return y_dot
 
-    def solve(self, t_vector: np.ndarray, method: str = None):
+    def solve(self, t_vector: np.ndarray = None, method: str = None):
+        if t_vector is None:
+            t_vector = self.options['t_vector']
+        if method is None:
+            try:
+                method = self.options['method']
+            except KeyError:
+                method = None
         self.sol = sp.integrate.solve_ivp(self.f, [t_vector[0], t_vector[-1]], self.y0, t_eval=t_vector, method=method)
         return self.sol
 
