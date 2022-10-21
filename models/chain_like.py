@@ -1,6 +1,7 @@
 from typing import Union, List
 import numpy as np
-
+import scipy as sp
+from matplotlib import pyplot as plt, animation
 
 element_types: dict = {'m': {'description': 'mass',
                              'props': ['value']},
@@ -9,11 +10,11 @@ element_types: dict = {'m': {'description': 'mass',
                        'c': {'description': 'linear viscous damping',
                              'props': ['value']},
                        'muN': {'description': 'Coulomb friction',
-                               'props': ['value']},
+                               'props': ['value', 'v_th', 'c_th']},
                        'gap': {'description': 'closing gap contact',
                                'props': ['value', 'contact_stiffness']}}
 
-constraint_types = ['imposed_displacement']
+constraint_types = ['fixed_dof']
 
 initial_condition_types = ['displacement', 'velocity']
 
@@ -26,27 +27,32 @@ class Element:
         elif isinstance(props, (float, int)):
             props = {'value': float(props)}
         elif isinstance(props, dict):
-            assert all([req_prop in props.keys() for req_prop in element_types[element_type]['props']]), 'Required prop'
-            assert all([prop in element_types[element_type]['props'] for prop in props.keys()]), 'Unsupported prop'
-            assert all([isinstance(props[given_prop], (float, int)) for given_prop in props.keys()]), 'props must be ' \
-                                                                                                      'numeric '
+            pass
         else:
             raise AssertionError('props must be None, dict or numeric')
+        assert all([isinstance(props[given_prop], (float, int)) for given_prop in props.keys()]), 'props must be ' \
+                                                                                                  'numeric '
         self.element_type = element_type
         self.i = i
         self.j = j
         self.props = props
-        self.response_ = None
+        # Precalculated
+        if self.element_type == 'muN':
+            if 'c_th' not in self.props.keys():
+                self.props.update({'c_th': self.props['value'] / self.props['v_th']})
+            if 'v_th' not in self.props.keys():
+                self.props.update({'v_th': self.props['value'] / self.props['c_th']})
+        assert all([req_prop in props.keys() for req_prop in element_types[element_type]['props']]), 'Required prop'
+        assert all([prop in element_types[element_type]['props'] for prop in props.keys()]), 'Unsupported prop'
 
     def __str__(self, ji: bool = False):
         return f'{self.element_type}_{self.j}_{self.i}' if ji else f'{self.element_type}_{self.i}_{self.j}'
 
     def force_ij(self, u, u_dot):
         """
-        Returns the force exerted by the element depending on the displacement and velocities, and retain them in the
-        attribute response_.
+        Returns the force exerted by the element depending on the displacement and velocities.
 
-        :param u: vector of displacements.
+        :param u: vector of displacements
         :param u_dot: vector of velocities.
         :return: float force exerted by the element.
         """
@@ -54,17 +60,31 @@ class Element:
             raise ValueError('inertial pseudo-force is not supported')
         try:
             if self.element_type == 'k':
-                return self.props['value']*(u[self.i] - u[self.j])
+                return self.props['value'] * (u[self.i] - u[self.j])
             elif self.element_type == 'c':
-                return self.props['value']*(u_dot[self.i] - u_dot[self.j])
+                return self.props['value'] * (u_dot[self.i] - u_dot[self.j])
             elif self.element_type == 'muN':
-                return self.props['value']*np.sign(u_dot[self.i] - u_dot[self.j])
+                return self.props['value'] * np.tanh((u_dot[self.i] - u_dot[self.j])/self.props['v_th'])
+                # if self.props['value'] == 0:
+                #     return 0.0
+                # vel = u_dot[self.i] - u_dot[self.j]
+                # if abs(vel) <= self.props['v_th']:
+                #     return self.props['c_th'] * vel
+                # else:
+                #     return self.props['value'] * np.sign(vel)
             elif self.element_type == 'gap':
-                contact_deformation = (u[self.i] - u[self.j]) - self.props['value']
-                if contact_deformation > 0:
-                    return self.props['contact_stiffness']*contact_deformation
+                if self.props['value'] >= 0:
+                    contact_deformation = (u[self.i] - u[self.j]) - self.props['value']
+                    if contact_deformation > 0:
+                        return self.props['contact_stiffness'] * contact_deformation
+                    else:
+                        return 0.0
                 else:
-                    return 0.0
+                    contact_deformation = (u[self.i] - u[self.j]) - self.props['value']
+                    if contact_deformation < 0:
+                        return self.props['contact_stiffness'] * contact_deformation
+                    else:
+                        return 0.0
         except KeyError:
             raise KeyError('Insufficient responses to calculate element force.')
 
@@ -90,10 +110,8 @@ class Mesh:
 
         self.n_dof = n_dof
         self.coordinates = np.linspace(0, length, n_dof)
-        self.displacements = np.zeros(n_dof)
-        self.velocities = np.zeros(n_dof)
-        element_mass = total_mass/(n_dof - 1)
-        self.elements = [Element('m', i=i, j=i+1, props=element_mass) for i in range(self.n_dof - 1)]
+        element_mass = total_mass / (n_dof - 1)
+        self.elements = [Element('m', i=i, j=i + 1, props=element_mass) for i in range(self.n_dof - 1)]
 
     def fill_elements(self, element_type, props_s: Union[List[Union[dict, float, int]], dict, float, int]):
         """
@@ -108,10 +126,10 @@ class Mesh:
 
         if isinstance(props_s, list) and len(props_s) == self.n_dof - 1:
             for i, props in enumerate(props_s):
-                self.elements.append(Element(element_type, i=i, j=i+1, props=props))
+                self.elements.append(Element(element_type, i=i, j=i + 1, props=props))
         elif isinstance(props_s, (float, int, dict)):
             for i in range(self.n_dof - 1):
-                self.elements.append((Element(element_type, i=i, j=i+1, props=props_s)))
+                self.elements.append((Element(element_type, i=i, j=i + 1, props=props_s)))
         else:
             raise TypeError
         return self
@@ -126,7 +144,7 @@ class DofWise:
 
 
 class Constraint(DofWise):
-    def __init__(self, dof_s, constraint_type: str = 'imposed_displacement', value: Union[int, float] = 0.0):
+    def __init__(self, dof_s, constraint_type: str = 'fixed_dof', value: Union[int, float] = 0.0):
         super().__init__(dof_s)
         assert constraint_type in constraint_types
         assert isinstance(value, (float, int))
@@ -145,31 +163,40 @@ class Load(DofWise):
         self.t = np.array(t)
         self.force = np.array(force)
 
+    def force_at_t(self, t: float):
+        return self.force[((self.t >= t).nonzero())[0][0]]
+
 
 class InitialCondition(DofWise):
     """
     All the initial conditions (displacements and velocities) are assumed 0.0, except for those defined using this.
     """
+
     def __init__(self, dof_s, ic_type: str = 'displacement', value: Union[float, int] = 0.0):
         super().__init__(dof_s)
-        assert ic_type in initial_condition_types, f"Supported initial conditions types are: {initial_condition_types}, " \
-                                                   f"but {ic_type} was specified."
+        assert ic_type in initial_condition_types, f"Supported initial conditions types are: " \
+                                                   f"{initial_condition_types}, but {ic_type} was specified."
         self.ic_type = ic_type
         self.value = float(value)
 
 
 class Model:
     def __init__(self, mesh: Mesh, constraints: Union[Constraint, List[Constraint]] = None,
-                 loads: Union[Load, List[Load]] = None):
+                 loads: Union[Load, List[Load]] = None,
+                 initial_conditions: Union[InitialCondition, List[InitialCondition]] = None):
         assert isinstance(mesh, Mesh)
         assert isinstance(constraints, (list, Constraint)) or constraints is None
         assert isinstance(loads, (list, Load)) or loads is None
+        assert isinstance(initial_conditions, (list, InitialCondition)) or initial_conditions is None
 
         self.mesh = mesh
         self.constraints = [] if constraints is None else constraints
         self.constraints = [self.constraints] if isinstance(constraints, Constraint) else constraints
         self.loads = [] if loads is None else loads
         self.loads = [self.loads] if isinstance(loads, Load) else self.loads
+        self.initial_conditions = [] if initial_conditions is None else initial_conditions
+        self.initial_conditions = [self.initial_conditions] if isinstance(initial_conditions, InitialCondition) \
+            else self.initial_conditions
 
         assert all([isinstance(constraint, Constraint) for constraint in self.constraints])
         assert all([isinstance(load, Load) for load in self.loads])
@@ -180,13 +207,47 @@ class Model:
             [self.mesh.elements[i] for i in range(self.n_elements) if self.mesh.elements[i].element_type == 'm']
         self.dof_masses = np.zeros(self.n_dof)
         for mass_element in mass_elements:
-            self.dof_masses[mass_element.i] += mass_element.props['value']
-            self.dof_masses[mass_element.j] += mass_element.props['value']
+            self.dof_masses[mass_element.i] += mass_element.props['value'] / 2
+            self.dof_masses[mass_element.j] += mass_element.props['value'] / 2
         # massless elements connected to each dof
         self.connectivity = [[i_e for i_e in range(self.n_elements) if
                               (self.mesh.elements[i_e].element_type != 'm') and
                               (self.mesh.elements[i_e].i == i_dof or self.mesh.elements[i_e].j == i_dof)]
                              for i_dof in range(self.n_dof)]
+        # load applied to each dof
+        self.loading = [[i_l for i_l in range(len(self.loads)) if (i_dof in self.loads[i_l].dof_s)]
+                        for i_dof in range(self.n_dof)]
+        self.y0 = np.zeros(2 * self.n_dof)
+        for initial_condition in self.initial_conditions:
+            if initial_condition.ic_type == 'displacement':
+                self.y0[initial_condition.dof_s] += initial_condition.value
+            elif initial_condition.ic_type == 'velocity':
+                self.y0[[i_dof + self.n_dof for i_dof in initial_condition.dof_s]] += initial_condition.value
+            else:
+                raise ValueError(f"Supported initial conditions types are: {initial_condition_types}"
+                                 f", but {initial_condition.ic_type} was specified.")
+        # fixed dof_s
+        self.constraining = []
+        for constraint in self.constraints:
+            if constraint.constraint_type == 'fixed_dof':
+                self.constraining.extend(constraint.dof_s)
+        # Solution
+        self.sol = None
+
+    def element_forces_at(self, i_dof: int, y: np.ndarray):
+        force_sum = 0.0
+        for i_e in self.connectivity[i_dof]:
+            if self.mesh.elements[i_e].i == i_dof:
+                force_sum += self.mesh.elements[i_e].force_ij(u=y[0:self.n_dof], u_dot=y[self.n_dof:])
+            else:
+                force_sum -= self.mesh.elements[i_e].force_ij(u=y[0:self.n_dof], u_dot=y[self.n_dof:])
+        return force_sum
+
+    def external_forces_at(self, i_dof: int, t: float):
+        force_sum = 0
+        for i_l in self.loading[i_dof]:
+            force_sum += self.loads[i_l].force_at_t(t)
+        return force_sum
 
     def f(self, t: float, y: np.ndarray):
         """
@@ -200,10 +261,43 @@ class Model:
         :returns y_dot: 1D vector of derivative system states. y = [ u_dot, -forces_sum/masses ]
         """
         forces_sum = np.zeros(self.n_dof)
-        # element forces
         for i_dof in range(self.n_dof):
-            for i_e in self.connectivity[i_dof]:
-                forces_sum[i_dof] += self.mesh.elements[i_e].force_ij(u=y[0:self.n_dof],
-                                                                      u_dot=y[self.n_dof:])
-        # y_dot = np.hstack((y[0:self.n_dof], ...))
-        # return y_dot
+            # element forces
+            forces_sum[i_dof] = self.element_forces_at(i_dof, y) + self.external_forces_at(i_dof, t)
+            # external forces
+            # for i_l in self.loading[i_dof]:
+            #     forces_sum[i_dof] += self.loads[i_l].force_at_t(t)
+
+        y_dot = np.hstack((y[self.n_dof:], -forces_sum / self.dof_masses))
+        # constraining
+        for i_const in self.constraining:
+            y_dot[i_const] = 0
+            y_dot[self.n_dof+i_const] = 0
+
+        return y_dot
+
+    def solve(self, t_vector: np.ndarray, method: str = None):
+        self.sol = sp.integrate.solve_ivp(self.f, [t_vector[0], t_vector[-1]], self.y0, t_eval=t_vector, method=method)
+        return self.sol
+
+    def reactions(self, i_dof: int):
+        return np.array([self.element_forces_at(i_dof, y_) + self.external_forces_at(i_dof, t_)
+                         for (y_, t_) in zip(self.sol.y.T, self.sol.t)])
+
+    def displacements(self, i_dof: int):
+        return self.sol.y[i_dof]
+
+    def velocities(self, i_dof: int):
+        return self.sol.y[self.n_dof + i_dof]
+
+    def animate(self):
+        fig, ax = plt.subplots(1, 1)
+        deformed, = ax.plot(self.mesh.coordinates + self.sol.y[0:self.n_dof, 0], np.zeros(self.n_dof), marker='o',
+                            markerfacecolor='r', markeredgecolor='k', linestyle='-')
+
+        def animate(i):
+            deformed.set_xdata(self.mesh.coordinates + self.sol.y[0:self.n_dof, i])
+            return deformed,
+
+        ani = animation.FuncAnimation(fig, animate, interval=1, blit=True, frames=len(self.sol.t))
+        return fig, ax, ani
