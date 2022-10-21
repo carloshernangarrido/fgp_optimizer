@@ -70,27 +70,28 @@ if __name__ == '__main__':
     model.solve()
     print("Elapsed time:", datetime.datetime.now() - t_i)
 
-    # fig, ax, ani = model.animate()
-    # plt.show()
+    fig, ax, ani = model.animate()
+    plt.show()
 
     if optimize_flag:
         # Optimization
         def obj_fun(model_: cl.Model):
             return max(abs(model_.reactions(fixed_dof)))
 
-        lb = {'muN_0_1': 0.1 * muN['value'],
-              'muN_1_2': 0.1 * muN['value'],
-              'muN_2_3': 0.1 * muN['value'],
-              'muN_3_4': 0.1 * muN['value']}
-        ub = {'muN_0_1': 10. * muN['value'],
-              'muN_1_2': 10. * muN['value'],
-              'muN_2_3': 10. * muN['value'],
-              'muN_3_4': 10. * muN['value']}
+        min_rel, max_rel = .5, 2
+        lb = {'muN_0_1': min_rel * muN['value'],
+              'muN_1_2': min_rel * muN['value'],
+              'muN_2_3': min_rel * muN['value'],
+              'muN_3_4': min_rel * muN['value']}
+        ub = {'muN_0_1': max_rel * muN['value'],
+              'muN_1_2': max_rel * muN['value'],
+              'muN_2_3': max_rel * muN['value'],
+              'muN_3_4': max_rel * muN['value']}
         optimization = optim.Optimization(base_model=model, obj_fun=obj_fun, lb=lb, ub=ub)
 
         base_result_value = optimization.opt_obj_func()
         print(base_result_value)
-        opt_result = optimization.optimize(maxiter=100, disp=True)
+        opt_result = optimization.optimize(maxiter=25, disp=True)
         print(opt_result)
 
         _, axs = plt.subplots(3, 1, sharex='all')
