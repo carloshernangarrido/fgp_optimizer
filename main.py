@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
-from material_properties import kc_from_al
+from material_properties import kc_from_al, m_from_al
 from models import chain_like as cl
 from optimization import optimizers as optim
 from plotting.results import plot_results
@@ -17,17 +17,17 @@ t_N = len(t_vector)
 
 area = 0.1*0.1
 n_dof = 5
-total_length = 0.05
+total_length = 0.10
 element_length = total_length/(n_dof-1)
 # zeta = .01
-total_mass = 1.0
+# total_mass = 1.0
 # total_stiffness = .001
-m = total_mass / (n_dof - 1)
+# m = total_mass / (n_dof - 1)
 # k = total_stiffness * (n_dof - 1)
 # c = zeta * (2 * np.sqrt(k * m))
 # c = 0.1
-k, c = kc_from_al(area=area, length=element_length)
-k *= 1
+k, c = kc_from_al(area=area, length=element_length, material='viscoelastic_foam')
+m = m_from_al(area=area, length=0.001, material='lead')
 
 # Plastification
 # muN = .06
@@ -42,14 +42,14 @@ gap = {'value': 0.75 * element_length,
 peak_force = 200e3 * area
 peak_time = 1e-3
 applied_impulse = peak_time*peak_force/2
-print(f"{applied_impulse=}")
 peak_ini = 1
 peak_end = peak_ini + np.searchsorted(t_vector >= peak_time, True)
 force_up = 0 * t_vector[0:peak_ini]
 force_down = peak_force - (peak_force / peak_time) * (t_vector[0:peak_end - peak_ini])
 force_vector = np.hstack((force_up, force_down, np.zeros(t_N - peak_end)))
-
 load_dof = n_dof - 1
+print(f"{peak_force=}")
+print(f"{applied_impulse=}")
 
 # Constraints
 fixed_dof = 0
@@ -59,15 +59,15 @@ dof0 = n_dof - 1
 d0 = 0.0
 v0 = 0.0
 
-maxiter = 10
-flags = {'opt_uniform': True,
-         'opt_fg': True,
+maxiter = 5
+flags = {'opt_uniform': False,
+         'opt_fg': False,
          'method': 'differential_evolution',  # 'simplex',  #
          'disp': True}
 opt_id = '01'
 
 if __name__ == '__main__':
-    mesh = (cl.Mesh(total_length, n_dof, total_mass=0))
+    mesh = (cl.Mesh(total_length, n_dof))
     mesh.fill_elements('k', k) \
         .fill_elements('gap', gap) \
         .fill_elements('c', c) \
@@ -89,7 +89,7 @@ if __name__ == '__main__':
         return max(abs(model_.reactions(fixed_dof)))
         # return max(abs(model_.impulses(fixed_dof)))
 
-    min_rel, max_rel = .1, 10
+    min_rel, max_rel = .1, 1
     lb = {'c_0_1': min_rel * c,
           'c_1_2': min_rel * c,
           'c_2_3': min_rel * c,
@@ -117,6 +117,7 @@ if __name__ == '__main__':
     # BASE
     opt_uniform = optim.Optimization(base_model=model.deepcopy(), obj_fun=obj_fun, lb=lb, ub=ub, uniform=True)
     print('base:', opt_uniform.opt_obj_func())
+    print('with', [element.props['value'] for element in opt_uniform.model.mesh.elements])
     _, axs = plt.subplots(4, 1, sharex='all')
     plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof), impulse=model.impulses(fixed_dof),
                  d=model.displacements(dof0), v=model.velocities(dof0),
@@ -134,6 +135,7 @@ if __name__ == '__main__':
         with open('opt_uniform.pk', 'rb') as file:
             opt_uniform = pickle.load(file)
     print('uniform optimal:', opt_uniform.opt_obj_func())
+    print('with', [element.props['value'] for element in opt_uniform.model.mesh.elements])
     _, axs = plt.subplots(4, 1, sharex='all')
     plot_results(axs, t=opt_uniform.model.sol.t,
                  f_reaction=opt_uniform.model.reactions(fixed_dof), impulse=opt_uniform.model.impulses(fixed_dof),
@@ -154,6 +156,7 @@ if __name__ == '__main__':
         with open(f'opt_fg_{opt_id}.pk', 'rb') as file:
             opt_fg = pickle.load(file)
     print('functionally graded optimal:', opt_fg.opt_obj_func())
+    print('with', [element.props['value'] for element in opt_fg.model.mesh.elements])
     _, axs = plt.subplots(4, 1, sharex='all')
     plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof), impulse=model.impulses(fixed_dof),
                  d=model.displacements(dof0), v=model.velocities(dof0),

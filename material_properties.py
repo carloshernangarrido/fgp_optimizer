@@ -14,13 +14,20 @@ tan_delta_1Hz = 0.17  # E = E_prime + i*E_second = E_prime (1 + i*tan_delta)
 # a = 0.10*0.10  # (m2) cross-section area
 # l = 0.01  # (m) length
 
-def kc_from_al(area: float, length: float):
-    # Stiffness
-    k = E_prime * area / length
 
-    # Damping coefficient
-    E_second = E_prime * tan_delta_1Hz
-    pi = np.pi
-    f = 1
-    c = (E_second * area / length) / (2 * pi * f)
-    return k, c
+def kc_from_al(area: float, length: float, material: str):
+    if material == 'viscoelastic_foam':
+        # Stiffness
+        k = E_prime * area / length
+
+        # Damping coefficient
+        E_second = E_prime * tan_delta_1Hz
+        pi = np.pi
+        f = 1
+        c = (E_second * area / length) / (2 * pi * f)
+        return k, c
+
+
+def m_from_al(area: float, length: float, material: str):
+    if material == 'lead':
+        return 11000.0 * area * length

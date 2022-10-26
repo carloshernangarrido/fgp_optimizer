@@ -102,7 +102,7 @@ class Element:
 
 
 class Mesh:
-    def __init__(self, length: Union[float, int], n_dof: int, total_mass: Union[float, int]):
+    def __init__(self, length: Union[float, int], n_dof: int, total_mass: Union[float, int] = None):
         """
         Creates a Mesh object that represents a 1D deformable body.
 
@@ -112,12 +112,15 @@ class Mesh:
         """
         assert isinstance(length, (int, float)) and length > 0
         assert isinstance(n_dof, int) and n_dof > 0
-        assert isinstance(total_mass, (int, float))  # and total_mass > 0
 
         self.n_dof = n_dof
         self.coordinates = np.linspace(0, length, n_dof)
-        element_mass = total_mass / (n_dof - 1)
-        self.elements = [Element('m', i=i, j=i + 1, props=element_mass) for i in range(self.n_dof - 1)]
+        if total_mass is not None:
+            assert isinstance(total_mass, (int, float))  # and total_mass > 0
+            element_mass = total_mass / (n_dof - 1)
+            self.elements = [Element('m', i=i, j=i + 1, props=element_mass) for i in range(self.n_dof - 1)]
+        else:
+            self.elements = []
 
     def fill_elements(self, element_type, props_s: Union[List[Union[dict, float, int]], dict, float, int]):
         """
