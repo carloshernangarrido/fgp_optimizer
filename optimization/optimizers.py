@@ -5,7 +5,7 @@ from scipy.optimize import differential_evolution, Bounds, minimize
 
 
 class Optimization:
-    def __init__(self, base_model: Model, obj_fun: callable, lb: dict, ub: dict):
+    def __init__(self, base_model: Model, obj_fun: callable, lb: dict, ub: dict, uniform: bool = False):
         assert isinstance(base_model, Model) and callable(obj_fun) and isinstance(lb, dict) and isinstance(ub, dict)
         assert lb.keys() == ub.keys(), 'upper bound and lower bound must refer to the same parameters'
         self.model = base_model
@@ -27,10 +27,14 @@ class Optimization:
                     self.initial_guess.append(element.props['value'])
                     break
         self.initial_guess = np.array(self.initial_guess)
+        self.model_list = []
+        self.uniform = uniform
 
     def opt_obj_func(self, x: list = None):
         if x is not None:
             for i_x, element_name in enumerate(self.parameters):
+                if self.uniform:
+                    i_x = 0
                 for element in self.model.mesh.elements:
                     if element_name in element.aliases():
                         element.props['value'] = x[i_x]
@@ -39,13 +43,18 @@ class Optimization:
                         break
         self.model.update_model()
         self.model.solve()
+        self.model_list.append(self.model.deepcopy())
         return self.obj_func(self.model)
 
-    def optimize(self, maxiter=None, disp: bool = False, workers: int = 1, vectorized: bool = None):
-        # self.result = differential_evolution(self.opt_obj_func, bounds=self.bounds, disp=disp,
-        #                                      maxiter=maxiter, workers=workers, x0=self.initial_guess,
-        #                                      vectorized=vectorized)
-        self.result = minimize(self.opt_obj_func, bounds=self.bounds, x0=self.initial_guess,
-                               options={'maxiter': maxiter, 'disp': disp}, method='Nelder-Mead')
+    def optimize(self, maxiter=None, disp: bool = False, workers: int = 1, vectorized: bool = None, method: str = None):
+        if method == 'differential_evolution':
+            self.result = differential_evolution(self.opt_obj_func, bounds=self.bounds, disp=disp,
+                                                 maxiter=maxiter, workers=workers, x0=self.initial_guess,
+                                                 vectorized=vectorized)
+        elif method == 'simplex':
+            self.result = minimize(self.opt_obj_func, bounds=self.bounds, x0=self.initial_guess,
+                                   options={'maxiter': maxiter, 'disp': disp}, method='Nelder-Mead')
+        else:
+            self.result = None
         return self.result
 

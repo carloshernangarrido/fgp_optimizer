@@ -1,3 +1,4 @@
+from copy import copy, deepcopy
 from typing import Union, List
 import numpy as np
 import scipy as sp
@@ -111,7 +112,7 @@ class Mesh:
         """
         assert isinstance(length, (int, float)) and length > 0
         assert isinstance(n_dof, int) and n_dof > 0
-        assert isinstance(total_mass, (int, float)) and total_mass > 0
+        assert isinstance(total_mass, (int, float))  # and total_mass > 0
 
         self.n_dof = n_dof
         self.coordinates = np.linspace(0, length, n_dof)
@@ -134,6 +135,8 @@ class Mesh:
                 self.elements.append(Element(element_type, i=i, j=i + 1, props=props))
         elif isinstance(props_s, (float, int, dict)):
             for i in range(self.n_dof - 1):
+                if isinstance(props_s, dict):
+                    props_s = props_s.copy()
                 self.elements.append((Element(element_type, i=i, j=i + 1, props=props_s)))
         else:
             raise TypeError
@@ -219,6 +222,9 @@ class Model:
         self.n_elements = None
         self.n_dof = None
         self.update_model()
+
+    def deepcopy(self):
+        return deepcopy(self)
 
     def update_model(self):
         for element in self.mesh.elements:
@@ -312,6 +318,9 @@ class Model:
     def reactions(self, i_dof: int):
         return np.array([self.element_forces_at(i_dof, y_) + self.external_forces_at(i_dof, t_)
                          for (y_, t_) in zip(self.sol.y.T, self.sol.t)])
+
+    def impulses(self, i_dof: int):
+        return np.hstack((0, sp.integrate.cumtrapz(self.reactions(i_dof), x=self.sol.t)))
 
     def displacements(self, i_dof: int):
         return self.sol.y[i_dof]

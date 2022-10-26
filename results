@@ -1,0 +1,39 @@
+differential_evolution
+----------------------
+
+# Time
+t_ini = 0.0
+t_fin = 20
+delta_t = .1
+t_vector = np.arange(t_ini, t_fin, delta_t)
+t_N = len(t_vector)
+
+n_dof = 5
+length = 10
+zeta = .01
+total_mass = 1.0
+total_stiffness = .01
+m = total_mass / (n_dof-1)
+k = total_stiffness * (n_dof-1)
+c = zeta * (2 * np.sqrt(k * m))
+
+# Plastification
+muN = 0.2
+element_length = length/(n_dof-1)
+displacement_tol = .01
+muN = {'value': muN,
+       'v_th': element_length*displacement_tol/(t_fin-t_ini)}
+# Compaction
+gap = {'value': 0.9 * (length / (n_dof - 1)),
+       'contact_stiffness': 10000 * k}
+
+
+mass
+differential_evolution step 106: f(x)= 0.111177
+     fun: 0.11113064974378806
+     jac: array([-16.9081172 , -15.29032208,   0.225393  ,  -0.22775139])
+ message: 'Optimization terminated successfully.'
+    nfev: 6760
+     nit: 106
+ success: True
+       x: array([0.02000469, 0.27987778, 1.35163159, 1.17156941])
