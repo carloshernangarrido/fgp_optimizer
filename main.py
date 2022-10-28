@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from material_properties import kc_from_al, m_from_al
 from models import chain_like as cl
 from optimization import optimizers as optim, bounds
-from optimization.obj_funs import obj_fun_peak, opt_obj_fun_override
+from optimization.obj_funs import obj_fun_peak, opt_obj_fun_override_density_uniform, opt_obj_fun_override_density_fg
 from plotting.results import plot_results
 
 # Time
@@ -64,7 +64,7 @@ flags = {'opt_uniform': True,
          'method': 'differential_evolution',  # 'simplex',  #
          'disp': True,
          'workers': 8}
-opt_id = '04'
+opt_id = '05'
 
 if __name__ == '__main__':
     mesh = (cl.Mesh(total_length, n_dof))
@@ -79,14 +79,17 @@ if __name__ == '__main__':
                           cl.InitialCondition(dof0, 'velocity', v0)]
     op = {'t_vector': t_vector, 'method': 'BDF'}
     model = cl.Model(mesh=mesh, constraints=constraints, loads=loads, initial_conditions=initial_conditions, options=op)
-
     t_i = datetime.datetime.now()
     model.solve()
     print("Elapsed time:", datetime.datetime.now() - t_i)
 
     # BASE
-    lb, ub = bounds.bounds(min_rel=min_rel, max_rel=max_rel, c=c, m=m)
-    opt_uniform = optim.Optimization(base_model=model.deepcopy(), obj_fun=obj_fun_peak, lb=lb, ub=ub, uniform=True)
+    lb_values_uniform, ub_values_uniform = \
+        bounds.bounds_values_density(n_elements=n_dof-1, min_mass=min_rel*m, max_mass=max_rel*m,
+                                     min_rel_density=min_rel, max_rel_density=max_rel, uniform=True)
+    opt_uniform = optim.ConstructiveOptimization(base_model=model.deepcopy(), obj_fun=obj_fun_peak,
+                                                 lb_values=lb_values_uniform, ub_values=ub_values_uniform,
+                                                 opt_obj_fun_override=opt_obj_fun_override_density_uniform)
     print('base:', opt_uniform.opt_obj_func())
     print('with', [element.props['value'] for element in opt_uniform.model.mesh.elements])
     _, axs = plt.subplots(4, 1, sharex='all')
@@ -116,10 +119,17 @@ if __name__ == '__main__':
 
     # FUNCTIONALLY GRADED
     if flags['opt_fg']:
-        for mass_element in [f"m_{i}_{i + 1}" for i in range(n_dof - 1)]:
-            ub[mass_element] *= (n_dof-1)
-        opt_fg = optim.Optimization(base_model=opt_uniform.model.deepcopy(), obj_fun=obj_fun_peak, lb=lb, ub=ub,
-                                    uniform=False, opt_obj_fun_override=opt_obj_fun_override)
+        # for mass_element in [f"m_{i}_{i + 1}" for i in range(n_dof - 1)]:
+        #     ub[mass_element] *= (n_dof-1)
+        # opt_fg = optim.Optimization(base_model=opt_uniform.model.deepcopy(), obj_fun=obj_fun_peak, lb=lb, ub=ub,
+        #                             uniform=False, opt_obj_fun_override=opt_obj_fun_override)
+        lb_values_fg, ub_values_fg = \
+            bounds.bounds_values_density(n_elements=n_dof - 1, min_mass=min_rel * m, max_mass=max_rel * m,
+                                         min_rel_density=min_rel, max_rel_density=max_rel, uniform=False)
+        opt_fg = optim.ConstructiveOptimization(base_model=model.deepcopy(), obj_fun=obj_fun_peak,
+                                                lb_values=lb_values_fg, ub_values=ub_values_fg,
+                                                opt_obj_fun_override=opt_obj_fun_override_density_fg,
+                                                initial_guess=(n_dof-1)*[opt_uniform.result.x[0]] + (n_dof-1)*[opt_uniform.result.x[1]])
         opt_fg.optimize(maxiter=maxiter, disp=flags['disp'], method=flags['method'], workers=flags['workers'])
         with open(f'opt_fg_{opt_id}.pk', 'wb') as file:
             pickle.dump(opt_fg, file)

@@ -1,8 +1,16 @@
+import numpy as np
 
 
-def bounds_density(n_elements, min_mass: float, max_mass: float, nominal_k: float, nominal_c: float,
-                   min_rel_density: float = 0.01, max_rel_density: float = 1.00):
-    ...
+def bounds_values_density(n_elements, min_mass: float, max_mass: float,
+                          min_rel_density: float = 0.01, max_rel_density: float = 1.00,
+                          uniform: bool = False):
+    if uniform:
+        lb_values = np.array([min_mass, min_rel_density])
+        ub_values = np.array([max_mass, max_rel_density])
+    else:
+        lb_values = np.hstack((n_elements*[min_mass], n_elements*[min_rel_density]))
+        ub_values = np.hstack((n_elements*[max_mass], n_elements*[max_rel_density]))
+    return lb_values, ub_values
 
 
 def bounds(min_rel: float = .01, max_rel: float = 1,
