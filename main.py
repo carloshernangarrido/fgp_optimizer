@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from material_properties import kc_from_al, m_from_al
 from models import chain_like as cl
 from optimization import optimizers as optim, bounds
+from optimization.obj_funs import obj_fun_peak, opt_obj_fun_override
 from plotting.results import plot_results
 
 # Time
@@ -19,13 +20,8 @@ area = 0.1 * 0.1
 n_dof = 5
 total_length = 0.10
 element_length = total_length / (n_dof - 1)
-# zeta = .01
-# total_mass = 1.0
-# total_stiffness = .001
-# m = total_mass / (n_dof - 1)
-# k = total_stiffness * (n_dof - 1)
-# c = zeta * (2 * np.sqrt(k * m))
-# c = 0.1
+
+min_rel, max_rel = 0.01, 1.00
 k, c = kc_from_al(area=area, length=element_length, material='viscoelastic_foam')
 m = m_from_al(area=area, length=0.001, material='lead')
 
@@ -35,8 +31,8 @@ displacement_tol = .01
 # muN = {'value': muN,
 #        'v_th': element_length*displacement_tol/(t_fin-t_ini)}
 # Compaction
-gap = {'value': 0.75 * element_length,
-       'contact_stiffness': 10000 * k}
+# gap = {'value': 0.75 * element_length,
+#        'contact_stiffness': 10000 * k}
 penalty_gap = {'value': 0.75 * element_length,
                'contact_stiffness': 10000 * k,
                'penetration': 0.01 * 0.75 * element_length}
@@ -63,11 +59,12 @@ d0 = 0.0
 v0 = 0.0
 
 maxiter = 500
-flags = {'opt_uniform': False,
-         'opt_fg': False,
+flags = {'opt_uniform': True,
+         'opt_fg': True,
          'method': 'differential_evolution',  # 'simplex',  #
-         'disp': True}
-opt_id = '03'
+         'disp': True,
+         'workers': 8}
+opt_id = '04'
 
 if __name__ == '__main__':
     mesh = (cl.Mesh(total_length, n_dof))
@@ -87,15 +84,9 @@ if __name__ == '__main__':
     model.solve()
     print("Elapsed time:", datetime.datetime.now() - t_i)
 
-
-    def obj_fun(model_: cl.Model):
-        return max(abs(model_.reactions(fixed_dof)))
-        # return max(abs(model_.impulses(fixed_dof)))
-
-    lb, ub = bounds.bounds(min_rel=.01, max_rel=1.00, c=c, m=m)
-
     # BASE
-    opt_uniform = optim.Optimization(base_model=model.deepcopy(), obj_fun=obj_fun, lb=lb, ub=ub, uniform=True)
+    lb, ub = bounds.bounds(min_rel=min_rel, max_rel=max_rel, c=c, m=m)
+    opt_uniform = optim.Optimization(base_model=model.deepcopy(), obj_fun=obj_fun_peak, lb=lb, ub=ub, uniform=True)
     print('base:', opt_uniform.opt_obj_func())
     print('with', [element.props['value'] for element in opt_uniform.model.mesh.elements])
     _, axs = plt.subplots(4, 1, sharex='all')
@@ -107,7 +98,7 @@ if __name__ == '__main__':
 
     # UNIFORM
     if flags['opt_uniform']:
-        opt_uniform.optimize(maxiter=maxiter, disp=flags['disp'], method=flags['method'])
+        opt_uniform.optimize(maxiter=maxiter, disp=flags['disp'], method=flags['method'], workers=flags['workers'])
         with open(f'opt_uniform_{opt_id}.pk', 'wb') as file:
             pickle.dump(opt_uniform, file)
     else:
@@ -125,9 +116,11 @@ if __name__ == '__main__':
 
     # FUNCTIONALLY GRADED
     if flags['opt_fg']:
-        opt_fg = optim.Optimization(base_model=opt_uniform.model.deepcopy(), obj_fun=obj_fun, lb=lb, ub=ub,
-                                    uniform=False)
-        opt_fg.optimize(maxiter=maxiter, disp=flags['disp'], method=flags['method'])
+        for mass_element in [f"m_{i}_{i + 1}" for i in range(n_dof - 1)]:
+            ub[mass_element] *= (n_dof-1)
+        opt_fg = optim.Optimization(base_model=opt_uniform.model.deepcopy(), obj_fun=obj_fun_peak, lb=lb, ub=ub,
+                                    uniform=False, opt_obj_fun_override=opt_obj_fun_override)
+        opt_fg.optimize(maxiter=maxiter, disp=flags['disp'], method=flags['method'], workers=flags['workers'])
         with open(f'opt_fg_{opt_id}.pk', 'wb') as file:
             pickle.dump(opt_fg, file)
     else:

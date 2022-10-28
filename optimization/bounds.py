@@ -1,5 +1,10 @@
 
 
+def bounds_density(n_elements, min_mass: float, max_mass: float, nominal_k: float, nominal_c: float,
+                   min_rel_density: float = 0.01, max_rel_density: float = 1.00):
+    ...
+
+
 def bounds(min_rel: float = .01, max_rel: float = 1,
            c: float = None, m: float = None, muN: dict = None):
     if c is not None and m is not None:
