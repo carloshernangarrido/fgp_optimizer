@@ -9,6 +9,20 @@ class BaseOptimization:
         assert isinstance(base_model, Model) and callable(obj_fun)
         self.model = base_model
         self.obj_func = obj_fun
+        self.model_list = []
+        self.result = None
+
+    def optimize(self, maxiter=None, disp: bool = False, workers: int = 1, vectorized: bool = None, method: str = None):
+        if method == 'differential_evolution':
+            self.result = differential_evolution(self.opt_obj_func, bounds=self.bounds, disp=disp,
+                                                 maxiter=maxiter, workers=workers, x0=self.initial_guess,
+                                                 vectorized=vectorized)
+        elif method == 'simplex':
+            self.result = minimize(self.opt_obj_func, bounds=self.bounds, x0=self.initial_guess,
+                                   options={'maxiter': maxiter, 'disp': disp}, method='Nelder-Mead')
+        else:
+            self.result = None
+        return self.result
 
 
 class Optimization(BaseOptimization):
@@ -41,7 +55,6 @@ class Optimization(BaseOptimization):
             ub_values.append(ub[key])
 
         self.bounds = Bounds(lb=lb_values, ub=ub_values, keep_feasible=True)
-        self.result = None
 
         self.initial_guess = []
         for i_x, element_name in enumerate(self.parameters):
@@ -50,7 +63,6 @@ class Optimization(BaseOptimization):
                     self.initial_guess.append(element.props['value'])
                     break
         self.initial_guess = np.array(self.initial_guess)
-        self.model_list = []
 
         self.uniform = uniform
         self.element_names_uniform = {}
@@ -96,14 +108,8 @@ class Optimization(BaseOptimization):
             else:  # restriction was violated
                 return np.inf
 
-    def optimize(self, maxiter=None, disp: bool = False, workers: int = 1, vectorized: bool = None, method: str = None):
-        if method == 'differential_evolution':
-            self.result = differential_evolution(self.opt_obj_func, bounds=self.bounds, disp=disp,
-                                                 maxiter=maxiter, workers=workers, x0=self.initial_guess,
-                                                 vectorized=vectorized)
-        elif method == 'simplex':
-            self.result = minimize(self.opt_obj_func, bounds=self.bounds, x0=self.initial_guess,
-                                   options={'maxiter': maxiter, 'disp': disp}, method='Nelder-Mead')
-        else:
-            self.result = None
-        return self.result
+
+class ConstructiveOptimization(BaseOptimization):
+    def __init__(self, base_model: Model, obj_fun: callable, bounds: Bounds, opt_obj_fun_override: callable = None):
+        super().__init__(base_model, obj_fun)
+        ...
