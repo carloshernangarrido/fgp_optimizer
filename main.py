@@ -21,7 +21,7 @@ n_dof = 5
 total_length = 0.10
 element_length = total_length / (n_dof - 1)
 
-min_rel, max_rel = 0.01, 1.00
+min_rel, max_rel = 0.10, 1.00
 k, c = kc_from_al(area=area, length=element_length, material='viscoelastic_foam')
 m = m_from_al(area=area, length=0.001, material='lead')
 
@@ -59,8 +59,8 @@ d0 = 0.0
 v0 = 0.0
 
 maxiter = 500
-flags = {'opt_uniform': True,
-         'opt_fg': True,
+flags = {'opt_uniform': False,
+         'opt_fg': False,
          'method': 'differential_evolution',  # 'simplex',  #
          'disp': True,
          'workers': 8}
