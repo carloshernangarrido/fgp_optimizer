@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from material_properties import kc_from_al, m_from_al
 from models import chain_like as cl
-from optimization import optimizers as optim
+from optimization import optimizers as optim, bounds
 from plotting.results import plot_results
 
 # Time
@@ -67,7 +67,7 @@ flags = {'opt_uniform': False,
          'opt_fg': False,
          'method': 'differential_evolution',  # 'simplex',  #
          'disp': True}
-opt_id = '02'
+opt_id = '03'
 
 if __name__ == '__main__':
     mesh = (cl.Mesh(total_length, n_dof))
@@ -92,44 +92,8 @@ if __name__ == '__main__':
         return max(abs(model_.reactions(fixed_dof)))
         # return max(abs(model_.impulses(fixed_dof)))
 
+    lb, ub = bounds.bounds(min_rel=.01, max_rel=1.00, c=c, m=m)
 
-    min_rel, max_rel = .01, 1
-    lb = {
-        'c_0_1': min_rel * c,
-        'c_1_2': min_rel * c,
-        'c_2_3': min_rel * c,
-        'c_3_4': min_rel * c,
-        'm_0_1': min_rel * m,
-        'm_1_2': min_rel * m,
-        'm_2_3': min_rel * m,
-        'm_3_4': min_rel * m
-    }
-    ub = {
-        'c_0_1': max_rel * c,
-        'c_1_2': max_rel * c,
-        'c_2_3': max_rel * c,
-        'c_3_4': max_rel * c,
-        'm_0_1': max_rel * m,
-        'm_1_2': max_rel * m,
-        'm_2_3': max_rel * m,
-        'm_3_4': max_rel * m
-    }
-    # lb = {'muN_0_1': min_rel * muN['value'],
-    #       'muN_1_2': min_rel * muN['value'],
-    #       'muN_2_3': min_rel * muN['value'],
-    #       'muN_3_4': min_rel * muN['value']}
-    # ub = {'muN_0_1': max_rel * muN['value'],
-    #       'muN_1_2': max_rel * muN['value'],
-    #       'muN_2_3': max_rel * muN['value'],
-    #       'muN_3_4': max_rel * muN['value']}
-    # lb = {'m_0_1': min_rel * m,
-    #       'm_1_2': min_rel * m,
-    #       'm_2_3': min_rel * m,
-    #       'm_3_4': min_rel * m}
-    # ub = {'m_0_1': max_rel * m,
-    #       'm_1_2': max_rel * m,
-    #       'm_2_3': max_rel * m,
-    #       'm_3_4': max_rel * m}
     # BASE
     opt_uniform = optim.Optimization(base_model=model.deepcopy(), obj_fun=obj_fun, lb=lb, ub=ub, uniform=True)
     print('base:', opt_uniform.opt_obj_func())
@@ -138,7 +102,6 @@ if __name__ == '__main__':
     plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof), impulse=model.impulses(fixed_dof),
                  d=model.displacements(dof0), v=model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='base')
-    # plt.show()
     fig, ax, ani = model.animate()
     plt.show()
 
@@ -157,7 +120,6 @@ if __name__ == '__main__':
                  f_reaction=opt_uniform.model.reactions(fixed_dof), impulse=opt_uniform.model.impulses(fixed_dof),
                  d=opt_uniform.model.displacements(dof0), v=opt_uniform.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='base')
-    # plt.show()
     fig, ax, ani = opt_uniform.model.animate()
     plt.show()
 
@@ -185,7 +147,6 @@ if __name__ == '__main__':
                  f_reaction=opt_fg.model.reactions(fixed_dof), impulse=opt_fg.model.impulses(fixed_dof),
                  d=opt_fg.model.displacements(dof0), v=opt_fg.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='opt FG')
-    plt.show()
     fig, ax, ani = opt_fg.model.animate()
     plt.show()
 
