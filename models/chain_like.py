@@ -1,4 +1,4 @@
-from copy import copy, deepcopy
+from copy import deepcopy
 from typing import Union, List
 import numpy as np
 import scipy as sp
@@ -13,11 +13,23 @@ element_types: dict = {'m': {'description': 'mass',
                        'muN': {'description': 'Coulomb friction',
                                'props': ['value', 'v_th', 'c_th']},
                        'gap': {'description': 'closing gap contact',
-                               'props': ['value', 'contact_stiffness']}}
+                               'props': ['value', 'contact_stiffness']},
+                       'penalty_gap': {'description': 'closing gap contact with penalty stiffness',
+                                       'props': ['value', 'contact_stiffness', 'penetration', 'quadratic_coefficient']}}
 
 constraint_types = ['fixed_dof']
 
 initial_condition_types = ['displacement', 'velocity']
+
+
+def s(x, x_0: float = 0, smoothness: float = 1):
+    """
+    Helper function to smooth transitions between two functions.
+
+    Example of usage:
+        h(x) = (1-s(x, x_0)) * f(x) + s(x, x_0) * g(x)
+    """
+    return 0.5 + 0.5 * np.tanh((x - x_0) / smoothness)
 
 
 class Element:
@@ -50,6 +62,10 @@ class Element:
                 self.props.update({'c_th': self.props['value'] / self.props['v_th']})
             if 'v_th' not in self.props.keys():
                 self.props.update({'v_th': self.props['value'] / self.props['c_th']})
+        if self.element_type == 'penalty_gap':
+            if 'quadratic_coefficient' not in self.props.keys():
+                self.props.update({'quadratic_coefficient':
+                                   self.props['contact_stiffness'] / (4 * self.props['penetration'])})
 
     def __str__(self, ji: bool = False):
         return f'{self.element_type}_{self.j}_{self.i}' if ji else f'{self.element_type}_{self.i}_{self.j}'
@@ -70,7 +86,7 @@ class Element:
             elif self.element_type == 'c':
                 return self.props['value'] * (u_dot[self.i] - u_dot[self.j])
             elif self.element_type == 'muN':
-                return self.props['value'] * np.tanh((u_dot[self.i] - u_dot[self.j])/self.props['v_th'])
+                return self.props['value'] * np.tanh((u_dot[self.i] - u_dot[self.j]) / self.props['v_th'])
                 # if self.props['value'] == 0:
                 #     return 0.0
                 # vel = u_dot[self.i] - u_dot[self.j]
@@ -91,6 +107,18 @@ class Element:
                         return self.props['contact_stiffness'] * contact_deformation
                     else:
                         return 0.0
+            elif self.element_type == 'penalty_gap':
+                if self.props['value'] >= 0:
+                    contact_deformation = (u[self.i] - u[self.j]) - self.props['value']
+                    if contact_deformation < -self.props['penetration']:
+                        return 0.0
+                    elif contact_deformation > self.props['penetration']:
+                        return contact_deformation * self.props['contact_stiffness']
+                    else:
+                        return self.props['quadratic_coefficient'] * (
+                                    contact_deformation + self.props['penetration']) ** 2
+                else:
+                    raise NotImplementedError
         except KeyError:
             raise KeyError('Insufficient responses to calculate element force.')
 
@@ -303,7 +331,7 @@ class Model:
         # constraining
         for i_const in self.constraining:
             y_dot[i_const] = 0
-            y_dot[self.n_dof+i_const] = 0
+            y_dot[self.n_dof + i_const] = 0
 
         return y_dot
 

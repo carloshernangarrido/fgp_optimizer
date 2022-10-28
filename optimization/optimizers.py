@@ -29,12 +29,17 @@ class Optimization:
         self.initial_guess = np.array(self.initial_guess)
         self.model_list = []
         self.uniform = uniform
+        self.element_names_uniform = {}
+        for i_x, element_name in enumerate(self.parameters):
+            if element_name.split('_')[0] not in \
+                    [element_type.split('_')[0] for element_type in self.element_names_uniform]:
+                self.element_names_uniform.update({element_name.split('_')[0]: i_x})
 
     def opt_obj_func(self, x: list = None):
         if x is not None:
             for i_x, element_name in enumerate(self.parameters):
                 if self.uniform:
-                    i_x = 0
+                    i_x = self.element_names_uniform[element_name.split('_')[0]]
                 for element in self.model.mesh.elements:
                     if element_name in element.aliases():
                         element.props['value'] = x[i_x]
