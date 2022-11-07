@@ -22,6 +22,7 @@ class BaseOptimization:
         self.opt_obj_fun_override = opt_obj_fun_override
 
     def opt_obj_func(self):
+        """To be defined by subclasses."""
         ...
 
     def optimize(self, maxiter=None, disp: bool = False, workers: int = 1, vectorized: bool = None, method: str = None):
@@ -119,16 +120,31 @@ class Optimization(BaseOptimization):
 class ConstructiveOptimization(BaseOptimization):
     def __init__(self, base_model: Model, obj_fun: callable,
                  lb_values: Union[list, np.ndarray], ub_values: Union[list, np.ndarray],
-                 opt_obj_fun_override: callable, initial_guess: Union[list, np.ndarray] = None):
+                 opt_obj_fun_override: callable, initial_guess: Union[list, np.ndarray] = None,
+                 restrictions_fun: callable = None):
+        """
+
+        :param base_model:
+        :param obj_fun:
+        :param lb_values:
+        :param ub_values:
+        :param opt_obj_fun_override:
+        :param initial_guess:
+        :param restrictions_fun: restriction is violated if restriction_fun(x) > 0. x is in the feasible domain if
+        restriction_fun(x) <= 0.
+        """
         super().__init__(base_model, obj_fun, opt_obj_fun_override)
         assert callable(opt_obj_fun_override), "opt_obj_fun_override must be provided"
         assert np.ndim(lb_values) == 1 and np.ndim(ub_values) == 1, "lb_values and up_values must be 1D array like"
         assert len(lb_values) == len(ub_values), "lb_values and up_values must be the same length"
+        assert callable(restrictions_fun) or restrictions_fun is None, 'restriction_fun must be callable or None'
 
         self.lb_values = np.array(lb_values)
         self.ub_values = np.array(ub_values)
         self.bounds = Bounds(lb=self.lb_values, ub=self.ub_values, keep_feasible=True)
-        self.initial_guess = 0.5*(self.ub_values - self.lb_values) if initial_guess is None else initial_guess
+        self.initial_guess = self.lb_values + 0.5*(self.ub_values - self.lb_values) \
+            if initial_guess is None else initial_guess
+        self.restriction_fun = restrictions_fun
 
     def opt_obj_func(self, x: list = None):
         if x is None:  # just wondering the output for current model
@@ -137,6 +153,8 @@ class ConstructiveOptimization(BaseOptimization):
             self.model_list.append(self.model.deepcopy())
             return self.obj_func(self.model)
 
+        if self.restriction_fun(x) > 0:  # restriction was violated
+            return np.inf
         ret = self.opt_obj_fun_override(x, self.model)
         if isinstance(ret, Model):
             self.model = ret
