@@ -1,6 +1,6 @@
 import numpy as np
 from models import chain_like as cl
-from input_parameters import fixed_dof, m, c, k, n_elements, max_mass
+from input_parameters import fixed_dof, m, c, k, n_elements, max_mass_total
 
 
 def obj_fun_peak(model_: cl.Model):
@@ -69,9 +69,9 @@ def opt_obj_fun_override_density_fg(x: np.ndarray, model: cl.Model):
 
 
 def restriction_fun_uniform(x: np.ndarray):
-    return n_elements * x[1] - max_mass
+    return n_elements * x[1] - max_mass_total
 
 
 def restriction_fun_fg(x: np.ndarray):
-    return np.sum(x[n_elements:]) - max_mass
+    return np.sum(x[n_elements:]) - max_mass_total
 

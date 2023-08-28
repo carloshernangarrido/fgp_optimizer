@@ -359,7 +359,7 @@ class Model:
     def velocities(self, i_dof: int):
         return self.sol.y[self.n_dof + i_dof]
 
-    def animate(self):
+    def animate(self, interval=1):
         fig, ax = plt.subplots(1, 1)
         deformed, = ax.plot(self.mesh.coordinates + self.sol.y[0:self.n_dof, 0], np.zeros(self.n_dof), marker='o',
                             markerfacecolor='r', markeredgecolor='k', linestyle='-')
@@ -368,5 +368,5 @@ class Model:
             deformed.set_xdata(self.mesh.coordinates + self.sol.y[0:self.n_dof, i])
             return deformed,
 
-        ani = animation.FuncAnimation(fig, animate, interval=1, blit=True, frames=len(self.sol.t))
+        ani = animation.FuncAnimation(fig, animate, interval=interval, blit=True, frames=len(self.sol.t))
         return fig, ax, ani
