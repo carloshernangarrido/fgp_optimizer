@@ -1,74 +1,14 @@
 import datetime
+import logging
 import pickle
-import numpy as np
 import matplotlib.pyplot as plt
 # import logging
 
-from material_properties import kc_from_al, m_from_al
 from models import chain_like as cl
 from optimization import optimizers as optim, bounds
 from optimization.obj_funs import obj_fun_peak, opt_obj_fun_override_density_uniform, opt_obj_fun_override_density_fg, \
                                     restriction_fun_fg, restriction_fun_uniform
 from plotting.results import plot_results
-
-# Time
-t_ini = 0.0
-t_fin = .05
-delta_t = .0001
-t_vector = np.arange(t_ini, t_fin, delta_t)
-t_N = len(t_vector)
-
-area = 0.1 * 0.1
-n_dof = 5
-total_length = 0.10
-element_length = total_length / (n_dof - 1)
-
-min_rel, max_rel = 0.50, 1.00
-k, c = kc_from_al(area=area, length=element_length, material='viscoelastic_foam')
-m = m_from_al(area=area, length=0.001, material='lead')
-max_mass = m * max_rel * (n_dof - 1)
-n_elements = n_dof-1
-
-# Plastification
-# muN = .06
-displacement_tol = .01
-# muN = {'value': muN,
-#        'v_th': element_length*displacement_tol/(t_fin-t_ini)}
-# Compaction
-# gap = {'value': 0.75 * element_length,
-#        'contact_stiffness': 10000 * k}
-penalty_gap = {'value': 0.75 * element_length,
-               'contact_stiffness': 10000 * k,
-               'penetration': 0.01 * 0.75 * element_length}
-
-# Load: triangular pulse
-peak_force = 200e3 * area
-peak_time = 1e-3
-applied_impulse = peak_time * peak_force / 2
-peak_ini = 1
-peak_end = peak_ini + np.searchsorted(t_vector >= peak_time, True)
-force_up = 0 * t_vector[0:peak_ini]
-force_down = peak_force - (peak_force / peak_time) * (t_vector[0:peak_end - peak_ini])
-force_vector = np.hstack((force_up, force_down, np.zeros(t_N - peak_end)))
-load_dof = n_dof - 1
-print(f"{peak_force=}")
-print(f"{applied_impulse=}")
-
-# Constraints
-fixed_dof = 0
-
-# Initial conditions
-dof0 = n_dof - 1
-d0 = 0.0
-v0 = 0.0
-
-maxiter = 500
-flags = {'opt_uniform': True,
-         'opt_fg': True,
-         'method': 'differential_evolution',  # 'simplex',  #
-         'disp': True,
-         'workers': 8}
-opt_id = '06'
 
 if __name__ == '__main__':
     # logging.basicConfig(filename=f'log{opt_id}.txt', filemode='w', format='%(asctime)s %(levelname)-8s %(message)s',
@@ -76,6 +16,9 @@ if __name__ == '__main__':
     #                     datefmt='%Y-%m-%d %H:%M:%S')
     # logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     #
+    from input_parameters import *
+    logging.info(f"{peak_force=}\n{applied_impulse=}")
+
     mesh = (cl.Mesh(total_length, n_dof))
     mesh.fill_elements('k', k) \
         .fill_elements('penalty_gap', penalty_gap) \

@@ -1,5 +1,6 @@
 import numpy as np
 from models import chain_like as cl
+from input_parameters import fixed_dof, m, c, k, n_elements, max_mass
 
 
 def obj_fun_peak(model_: cl.Model):
@@ -74,5 +75,3 @@ def restriction_fun_uniform(x: np.ndarray):
 def restriction_fun_fg(x: np.ndarray):
     return np.sum(x[n_elements:]) - max_mass
 
-
-from main import fixed_dof, m, c, k, n_elements, max_mass
