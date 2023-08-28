@@ -2,6 +2,7 @@ import datetime
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+# import logging
 
 from material_properties import kc_from_al, m_from_al
 from models import chain_like as cl
@@ -70,6 +71,11 @@ flags = {'opt_uniform': True,
 opt_id = '06'
 
 if __name__ == '__main__':
+    # logging.basicConfig(filename=f'log{opt_id}.txt', filemode='w', format='%(asctime)s %(levelname)-8s %(message)s',
+    #                     level=logging.INFO,
+    #                     datefmt='%Y-%m-%d %H:%M:%S')
+    # logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+    #
     mesh = (cl.Mesh(total_length, n_dof))
     mesh.fill_elements('k', k) \
         .fill_elements('penalty_gap', penalty_gap) \
