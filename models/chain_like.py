@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt, animation
 element_types: dict = {'m': {'description': 'mass',
                              'props': ['value']},
                        'k': {'description': 'linear stiffness',
-                             'props': ['value']},
+                             'props': ['value', 'allowable_deformation']},
                        'c': {'description': 'linear viscous damping',
                              'props': ['value']},
                        'muN': {'description': 'Coulomb friction',
@@ -66,6 +66,9 @@ class Element:
             if 'quadratic_coefficient' not in self.props.keys():
                 self.props.update({'quadratic_coefficient':
                                    self.props['contact_stiffness'] / (4 * self.props['penetration'])})
+        if self.element_type == 'k':
+            if 'allowable_deformation' not in self.props.keys():
+                self.props.update({'allowable_deformation': np.inf})
 
     def __str__(self, ji: bool = False):
         return f'{self.element_type}_{self.j}_{self.i}' if ji else f'{self.element_type}_{self.i}_{self.j}'
@@ -82,7 +85,11 @@ class Element:
             raise ValueError('inertial pseudo-force is not supported')
         try:
             if self.element_type == 'k':
-                return self.props['value'] * (u[self.i] - u[self.j])
+                deformation = u[self.i] - u[self.j]
+                if abs(deformation) > self.props['allowable_deformation']:
+                    raise Exception('deformation larger than allowable deformation')
+                else:
+                    return self.props['value'] * deformation
             elif self.element_type == 'c':
                 return self.props['value'] * (u_dot[self.i] - u_dot[self.j])
             elif self.element_type == 'muN':
@@ -359,14 +366,14 @@ class Model:
     def velocities(self, i_dof: int):
         return self.sol.y[self.n_dof + i_dof]
 
-    def animate(self, interval=1):
+    def animate(self, each: int = 1):
         fig, ax = plt.subplots(1, 1)
         deformed, = ax.plot(self.mesh.coordinates + self.sol.y[0:self.n_dof, 0], np.zeros(self.n_dof), marker='o',
                             markerfacecolor='r', markeredgecolor='k', linestyle='-')
 
-        def animate(i):
-            deformed.set_xdata(self.mesh.coordinates + self.sol.y[0:self.n_dof, i])
+        def animate_frame(i):
+            deformed.set_xdata(self.mesh.coordinates + self.sol.y[0:self.n_dof, i*each])
             return deformed,
 
-        ani = animation.FuncAnimation(fig, animate, interval=interval, blit=True, frames=len(self.sol.t))
+        ani = animation.FuncAnimation(fig, animate_frame, interval=1, blit=True, frames=len(self.sol.t)//each)
         return fig, ax, ani

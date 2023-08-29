@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     # Initial model
     mesh = (cl.Mesh(total_length, n_dof))
-    mesh.fill_elements('k', k) \
+    mesh.fill_elements('k', k_with_failure) \
         .fill_elements('penalty_gap', penalty_gap) \
         .fill_elements('c', c) \
         .fill_elements('m', max_mass_total/n_elements)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof), impulse=model.impulses(fixed_dof),
                  d=model.displacements(dof0), v=model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='base')
-    fig, ax, ani = model.animate()
+    fig, ax, ani = model.animate(each=animate_each)
     plt.show()
 
     # UNIFORM
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                  f_reaction=opt_uniform.model.reactions(fixed_dof), impulse=opt_uniform.model.impulses(fixed_dof),
                  d=opt_uniform.model.displacements(dof0), v=opt_uniform.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='base')
-    fig, ax, ani = opt_uniform.model.animate()
+    fig, ax, ani = opt_uniform.model.animate(each=animate_each)
     plt.show()
 
     # FUNCTIONALLY GRADED
@@ -104,6 +104,6 @@ if __name__ == '__main__':
                  f_reaction=opt_fg.model.reactions(fixed_dof), impulse=opt_fg.model.impulses(fixed_dof),
                  d=opt_fg.model.displacements(dof0), v=opt_fg.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='opt FG')
-    fig, ax, ani = opt_fg.model.animate()
+    fig, ax, ani = opt_fg.model.animate(each=animate_each)
     plt.show()
 
