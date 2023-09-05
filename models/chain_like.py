@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import deepcopy, copy
 from typing import Union, List
 import numpy as np
 import scipy as sp
@@ -65,7 +65,7 @@ class Element:
         if self.element_type == 'penalty_gap':
             if 'quadratic_coefficient' not in self.props.keys():
                 self.props.update({'quadratic_coefficient':
-                                   self.props['contact_stiffness'] / (4 * self.props['penetration'])})
+                                       self.props['contact_stiffness'] / (4 * self.props['penetration'])})
         if self.element_type == 'k':
             if 'allowable_deformation' not in self.props.keys():
                 self.props.update({'allowable_deformation': np.inf})
@@ -123,7 +123,7 @@ class Element:
                         return contact_deformation * self.props['contact_stiffness']
                     else:
                         return self.props['quadratic_coefficient'] * (
-                                    contact_deformation + self.props['penetration']) ** 2
+                                contact_deformation + self.props['penetration']) ** 2
                 else:
                     raise NotImplementedError
         except KeyError:
@@ -350,7 +350,8 @@ class Model:
                 method = self.options['method']
             except KeyError:
                 method = None
-        self.sol = sp.integrate.solve_ivp(self.f, [t_vector[0], t_vector[-1]], self.y0, t_eval=t_vector, method=method)
+        self.sol = sp.integrate.solve_ivp(self.f, [t_vector[0], t_vector[-1]], self.y0, t_eval=t_vector,
+                                          method=method)
         return self.sol
 
     def reactions(self, i_dof: int):
@@ -363,6 +364,9 @@ class Model:
     def displacements(self, i_dof: int):
         return self.sol.y[i_dof]
 
+    def deformations(self):
+        return np.array([self.displacements(i_dof+1) - self.displacements(i_dof) for i_dof in range(self.n_dof-1)]).T
+
     def velocities(self, i_dof: int):
         return self.sol.y[self.n_dof + i_dof]
 
@@ -372,8 +376,8 @@ class Model:
                             markerfacecolor='r', markeredgecolor='k', linestyle='-')
 
         def animate_frame(i):
-            deformed.set_xdata(self.mesh.coordinates + self.sol.y[0:self.n_dof, i*each])
+            deformed.set_xdata(self.mesh.coordinates + self.sol.y[0:self.n_dof, i * each])
             return deformed,
 
-        ani = animation.FuncAnimation(fig, animate_frame, interval=1, blit=True, frames=len(self.sol.t)//each)
+        ani = animation.FuncAnimation(fig, animate_frame, interval=1, blit=True, frames=len(self.sol.t) // each)
         return fig, ax, ani

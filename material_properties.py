@@ -36,6 +36,17 @@ def kcgapkc_from_al(area: float, length: float, material: str):
         c = E_damping * area / length
         gap = (.030/.048)*length
         kc = 40*k
+    elif material == 'c100times_characterized_viscoelastic_foam':
+        k_m3_m3_m024 = 5e4  # N/m (post compaction 2e6, 40 times)
+        c_m3_m3_m024 = 100*1e3  # Ns/m
+        E_prime = k_m3_m3_m024 * .048 / (.3*.3)
+        # Stiffness
+        k = E_prime * area / length
+        # Damping coefficient
+        E_damping = c_m3_m3_m024 * .048 / (.3*.3)
+        c = E_damping * area / length
+        gap = (.030/.048)*length
+        kc = 40*k
     return k, c, gap, kc
 
 

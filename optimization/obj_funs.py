@@ -2,34 +2,31 @@ import numpy as np
 from models import chain_like as cl
 from input_parameters import fixed_dof, m, c, k, n_elements, max_mass_total
 
+from input_parameters import lambda_, max_def_restriction
 
-def obj_fun_peak(model_: cl.Model):
+
+def obj_fun_peak(model_: cl.Model) -> float:
     return max(abs(model_.reactions(fixed_dof)))
 
 
-def obj_fun_impulse(model_: cl.Model):
-    return max(abs(model_.impulses(fixed_dof)))
-
-
-def opt_obj_fun_override(x: np.ndarray, model: cl.Model):
-    """
-    :param x: damping coefficients and masses [c_0_1, ..., c_n-1_n, m_0_1, ..., m_n-1_n]
-    :param model:
-    :return: modified model_ of np.inf if some restriction is violated
-    """
-    n_elements = len(x) // 2
-    max_mass = m * n_elements
-    if sum(x[n_elements:]) > max_mass:
-        return np.inf
+def obj_fun_peak_and_deformation(model_: cl.Model) -> float:
+    max_def = np.max(np.abs(model_.deformations()))
+    if max_def < max_def_restriction:
+        return obj_fun_peak(model_)
     else:
-        for element in model.mesh.elements:
-            for i, c_i_j in enumerate([f"c_{i}_{i + 1}" for i in range(n_elements)]):
-                if c_i_j in element.aliases():
-                    element.props['value'] = x[i]
-            for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(n_elements)]):
-                if m_i_j in element.aliases():
-                    element.props['value'] = x[n_elements + i]
-    return model
+        return obj_fun_peak(model_) + lambda_*max_def
+
+
+def obj_fun_impulse(model_: cl.Model) -> float:
+    return abs(model_.impulses(fixed_dof)[-1])
+
+
+def obj_fun_impulse_and_deformation(model_: cl.Model) -> float:
+    max_def = np.max(np.abs(model_.deformations()))
+    if max_def < max_def_restriction:
+        return obj_fun_impulse(model_)
+    else:
+        return obj_fun_impulse(model_) + lambda_*max_def
 
 
 def opt_obj_fun_override_density_uniform(x: np.ndarray, model: cl.Model):
