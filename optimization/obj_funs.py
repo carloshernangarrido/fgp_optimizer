@@ -179,17 +179,33 @@ def opt_obj_fun_override_denskc_m_fg_protstr(x: np.ndarray, model: cl.Model):
     return model
 
 
-def restriction_fun_uniform(x: np.ndarray):
+def restriction_fun_density_uniform(x: np.ndarray):
     return n_elements * x[1] - max_mass_total
 
 
-def restriction_fun_fg(x: np.ndarray):
+def restriction_fun_density_fg(x: np.ndarray):
     return np.sum(x[n_elements:]) - max_mass_total
 
 
-def restriction_fun_uniform_protstr(x: np.ndarray):
+def restriction_fun_denskc_m_uniform(x: np.ndarray):
+    return n_elements * x[2] - max_mass_total
+
+
+def restriction_fun_denskc_m_fg(x: np.ndarray):
+    return np.sum(x[2*n_elements:]) - max_mass_total
+
+
+def restriction_fun_density_uniform_protstr(x: np.ndarray):
     return (n_elements-1) * x[1] - max_mass_total
 
 
-def restriction_fun_fg_protstr(x: np.ndarray):
-    return np.sum(x[(n_elements-1):]) - max_mass_total
+def restriction_fun_density_fg_protstr(x: np.ndarray):
+    return np.sum(x[(1*(n_elements-1)):]) - max_mass_total
+
+
+def restriction_fun_denskc_m_uniform_protstr(x: np.ndarray):
+    return (n_elements-1) * x[2] - max_mass_total
+
+
+def restriction_fun_denskc_m_fg_protstr(x: np.ndarray):
+    return np.sum(x[(2*(n_elements-1)):]) - max_mass_total

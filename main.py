@@ -5,8 +5,6 @@ import sys
 
 from models import chain_like as cl
 from optimization import optimizers as optim
-from optimization.obj_funs import restriction_fun_fg as restriction_fun_fg
-from optimization.obj_funs import restriction_fun_uniform as restriction_fun_uniform
 from plotting.results import plot_results
 
 if __name__ == '__main__':
@@ -20,10 +18,14 @@ if __name__ == '__main__':
         from optimization.obj_funs import opt_obj_fun_override_density_uniform as opt_obj_fun_override_uniform
         from optimization.obj_funs import opt_obj_fun_override_density_fg as opt_obj_fun_override_fg
         from optimization.bounds import bounds_values_density as bounds_values
+        from optimization.obj_funs import restriction_fun_density_fg as restriction_fun_fg
+        from optimization.obj_funs import restriction_fun_density_uniform as restriction_fun_uniform
     elif flags['fun_override'] == 'denskc_m':
         from optimization.obj_funs import opt_obj_fun_override_denskc_m_uniform as opt_obj_fun_override_uniform
         from optimization.obj_funs import opt_obj_fun_override_denskc_m_fg as opt_obj_fun_override_fg
         from optimization.bounds import bounds_values_denskc_m as bounds_values
+        from optimization.obj_funs import restriction_fun_denskc_m_fg as restriction_fun_fg
+        from optimization.obj_funs import restriction_fun_denskc_m_uniform as restriction_fun_uniform
 
     logging.basicConfig(filename=f'log{opt_id}.txt', filemode='w', format='%(asctime)s %(levelname)-8s %(message)s',
                         level=logging.INFO,
@@ -52,15 +54,18 @@ if __name__ == '__main__':
                 element.props['value'] = protected_structure['k']
             elif element.element_type == 'c' and element.i == 0 and element.j == 1:
                 element.props['value'] = protected_structure['c']
-        from optimization.obj_funs import restriction_fun_fg_protstr as restriction_fun_fg
-        from optimization.obj_funs import restriction_fun_uniform_protstr as restriction_fun_uniform
         if flags['fun_override'] == 'density':
             from optimization.obj_funs import opt_obj_fun_override_density_uniform_protstr as opt_obj_fun_override_uniform
             from optimization.obj_funs import opt_obj_fun_override_density_fg_protstr as opt_obj_fun_override_fg
+            from optimization.bounds import bounds_values_density as bounds_values
+            from optimization.obj_funs import restriction_fun_density_fg_protstr as restriction_fun_fg
+            from optimization.obj_funs import restriction_fun_density_uniform_protstr as restriction_fun_uniform
         elif flags['fun_override'] == 'denskc_m':
             from optimization.obj_funs import opt_obj_fun_override_denskc_m_uniform_protstr as opt_obj_fun_override_uniform
             from optimization.obj_funs import opt_obj_fun_override_denskc_m_fg_protstr as opt_obj_fun_override_fg
             from optimization.bounds import bounds_values_denskc_m as bounds_values
+            from optimization.obj_funs import restriction_fun_denskc_m_fg_protstr as restriction_fun_fg
+            from optimization.obj_funs import restriction_fun_denskc_m_uniform_protstr as restriction_fun_uniform
     except NameError:
         logging.info('protected_structure is not defined')
 

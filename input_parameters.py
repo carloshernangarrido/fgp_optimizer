@@ -23,7 +23,7 @@ lambda_ = 1e3*140000/max_def_restriction  # peak
 
 # Loading
 scale = 1.0
-times_t = 3
+times_t = 2
 subsampling = 10
 loading_path = r"C:\Users\joses\Mi unidad\TRABAJO\48_FG_protection\TRABAJO\loadings"
 loading_filename = r"Ident 0 - 2d-1-5kg-0-52m01.uhs"
