@@ -4,9 +4,9 @@ import pickle
 import sys
 
 from models import chain_like as cl
-from optimization import optimizers as optim, bounds
-from optimization.obj_funs import opt_obj_fun_override_density_uniform, opt_obj_fun_override_density_fg, \
-    restriction_fun_fg, restriction_fun_uniform
+from optimization import optimizers as optim
+from optimization.obj_funs import restriction_fun_fg as restriction_fun_fg
+from optimization.obj_funs import restriction_fun_uniform as restriction_fun_uniform
 from plotting.results import plot_results
 
 if __name__ == '__main__':
@@ -52,6 +52,8 @@ if __name__ == '__main__':
                 element.props['value'] = protected_structure['k']
             elif element.element_type == 'c' and element.i == 0 and element.j == 1:
                 element.props['value'] = protected_structure['c']
+        from optimization.obj_funs import restriction_fun_fg_protstr as restriction_fun_fg
+        from optimization.obj_funs import restriction_fun_uniform_protstr as restriction_fun_uniform
         if flags['fun_override'] == 'density':
             from optimization.obj_funs import opt_obj_fun_override_density_uniform_protstr as opt_obj_fun_override_uniform
             from optimization.obj_funs import opt_obj_fun_override_density_fg_protstr as opt_obj_fun_override_fg
