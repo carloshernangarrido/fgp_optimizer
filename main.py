@@ -83,7 +83,7 @@ if __name__ == '__main__':
     _, axs = plt.subplots(4, 1, sharex='all')
     plot_results(axs, t=opt_uniform.model.sol.t,
                  f_reaction=opt_uniform.model.reactions(fixed_dof), impulse=opt_uniform.model.impulses(fixed_dof),
-                 d=opt_uniform.model.displacements(dof0), v=opt_uniform.model.velocities(dof0),
+                 d=opt_uniform.model.deformations(), v=opt_uniform.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='base', color='blue')
     fig, ax, ani = opt_uniform.model.animate(each=animate_each)
     plt.show()
@@ -96,8 +96,8 @@ if __name__ == '__main__':
         opt_fg = optim.ConstructiveOptimization(base_model=model.deepcopy(), obj_fun=obj_fun,
                                                 lb_values=lb_values_fg, ub_values=ub_values_fg,
                                                 opt_obj_fun_override=opt_obj_fun_override_fg,
-                                                initial_guess=(n_dof - 1) * [opt_uniform.result.x[0]] +
-                                                              (n_dof - 1) * [opt_uniform.result.x[1]],
+                                                initial_guess=np.array(
+                                                    [(n_dof - 1) * [_] for _ in opt_uniform.result.x]).flatten(),
                                                 restrictions_fun=restriction_fun_fg)
         opt_fg.optimize(maxiter=maxiter, disp=flags['disp'], method=flags['method'], workers=flags['workers'])
         with open(f'opt_fg_{opt_id}.pk', 'wb') as file:
