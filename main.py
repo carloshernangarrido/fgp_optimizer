@@ -38,15 +38,30 @@ if __name__ == '__main__':
     mesh.fill_elements('k', k) \
         .fill_elements('penalty_gap', penalty_gap) \
         .fill_elements('c', c) \
-        .fill_elements('m', max_mass_total / n_elements)
-    for element in mesh.elements:
-        if element.element_type == 'm':
-            element.props['value'] = min_mass_dof
-    mesh.elements[-1].props['value'] = max_mass_total - (n_dof - 1 - 1) * min_mass_dof
+        .fill_elements('m', min_mass_dof)
     constraints = cl.Constraint(dof_s=fixed_dof)
     loads = cl.Load(dof_s=load_dof, t=t_vector, force=force_vector)
     initial_conditions = [cl.InitialCondition(dof0, 'displacement', d0),
                           cl.InitialCondition(dof0, 'velocity', v0)]
+    try:
+        logging.info(f'protected_structure is defined as {protected_structure}')
+        for element in mesh.elements:
+            if element.element_type == 'm' and element.i == 0 and element.j == 1:
+                element.props['value'] = protected_structure['m']*2  # half of this mass is lost in the fix support
+            elif element.element_type == 'k' and element.i == 0 and element.j == 1:
+                element.props['value'] = protected_structure['k']
+            elif element.element_type == 'c' and element.i == 0 and element.j == 1:
+                element.props['value'] = protected_structure['c']
+        if flags['fun_override'] == 'density':
+            from optimization.obj_funs import opt_obj_fun_override_density_uniform_protstr as opt_obj_fun_override_uniform
+            from optimization.obj_funs import opt_obj_fun_override_density_fg_protstr as opt_obj_fun_override_fg
+        elif flags['fun_override'] == 'denskc_m':
+            from optimization.obj_funs import opt_obj_fun_override_denskc_m_uniform_protstr as opt_obj_fun_override_uniform
+            from optimization.obj_funs import opt_obj_fun_override_denskc_m_fg_protstr as opt_obj_fun_override_fg
+            from optimization.bounds import bounds_values_denskc_m as bounds_values
+    except NameError:
+        logging.info('protected_structure is not defined')
+
     op = {'t_vector': t_vector, 'method': 'BDF'}
     model = cl.Model(mesh=mesh, constraints=constraints, loads=loads, initial_conditions=initial_conditions, options=op)
     t_i = datetime.datetime.now()
@@ -122,3 +137,4 @@ if __name__ == '__main__':
                  t_load=t_vector, f_load=force_vector, label='opt FG', color='green')
     fig, ax, ani = opt_fg.model.animate(each=animate_each)
     plt.show()
+    ...

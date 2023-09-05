@@ -13,7 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-n_dof = 4
+n_dof = 5
 area = 0.3 * 0.3  # m^2
 
 # Weigth for deformations
@@ -60,6 +60,9 @@ if subsampling is not None:
 peak_force = max(force_vector)
 applied_impulse = np.trapz(y=force_vector, x=t_vector)
 
+# Protected structure
+protected_structure = {'m': 57.6*2/np.pi, 'k': (57.6*2/np.pi)*(2*np.pi*120)**2, 'c': 0}
+
 # Protection design
 n_elements = n_dof - 1
 load_dof = n_dof - 1
@@ -90,18 +93,18 @@ k_with_failure = {'value': k,
 fixed_dof = 0
 
 # Initial conditions
-dof0 = n_dof - 1
+dof0 = load_dof
 d0 = 0.0
 v0 = 0.0
 
 animate_each = 5
 
 maxiter = 100
-flags = {'obj_fun': 'impulse',  # 'peak', 'impulse'
+flags = {'obj_fun': 'peak',  # 'peak', 'impulse'
          'fun_override': 'denskc_m',  # 'density', 'denskc_m'
          'opt_uniform': True,
          'opt_fg': True,
          'method': 'differential_evolution',  # 'simplex',  #
          'disp': True,
          'workers': 7}
-opt_id = '02'
+opt_id = '00'
