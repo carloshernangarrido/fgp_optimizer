@@ -8,8 +8,20 @@ def bounds_values_density(n_elements, min_mass: float, max_mass: float,
         lb_values = np.array([min_rel_density, min_mass])
         ub_values = np.array([max_rel_density, max_mass])
     else:  # densities and masses [dens_0_1, ..., dens_n-1_n, m_0_1, ..., m_n-1_n]
-        lb_values = np.hstack((n_elements*[min_rel_density], n_elements*[min_mass]))
-        ub_values = np.hstack((n_elements*[max_rel_density], n_elements*[max_mass]))
+        lb_values = np.hstack((n_elements * [min_rel_density], n_elements * [min_mass]))
+        ub_values = np.hstack((n_elements * [max_rel_density], n_elements * [max_mass]))
+    return lb_values, ub_values
+
+
+def bounds_values_denskc_m(n_elements, min_mass: float, max_mass: float,
+                           min_rel_density: float = 0.01, max_rel_density: float = 1.00,
+                           uniform: bool = False):
+    if uniform:  # densities and masses [densk, densc, mass]
+        lb_values = np.array([min_rel_density, min_rel_density, min_mass])
+        ub_values = np.array([max_rel_density, max_rel_density, max_mass])
+    else:  # densities and masses [densk_0_1, ..., densk_n-1_n, densc_0_1, ..., densc_n-1_n, m_0_1, ..., m_n-1_n]
+        lb_values = np.hstack((n_elements * [min_rel_density], n_elements * [min_rel_density], n_elements * [min_mass]))
+        ub_values = np.hstack((n_elements * [max_rel_density], n_elements * [max_rel_density], n_elements * [max_mass]))
     return lb_values, ub_values
 
 

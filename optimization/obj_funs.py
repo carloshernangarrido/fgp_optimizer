@@ -51,17 +51,54 @@ def opt_obj_fun_override_density_fg(x: np.ndarray, model: cl.Model):
     :param model:
     :return: modified model_.
     """
-    n_elements = model.n_dof - 1
+    n_viscoelastic_elements = model.n_dof - 1
     for element in model.mesh.elements:
-        for i, c_i_j in enumerate([f"c_{i}_{i + 1}" for i in range(n_elements)]):
+        for i, c_i_j in enumerate([f"c_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
             if c_i_j in element.aliases():
                 element.props['value'] = x[i] * c
-        for i, k_i_j in enumerate([f"k_{i}_{i + 1}" for i in range(n_elements)]):
+        for i, k_i_j in enumerate([f"k_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
             if k_i_j in element.aliases():
                 element.props['value'] = x[i] * k
-        for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(n_elements)]):
+        for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
             if m_i_j in element.aliases():
-                element.props['value'] = x[n_elements + i]
+                element.props['value'] = x[n_viscoelastic_elements + i]
+    return model
+
+
+def opt_obj_fun_override_denskc_m_uniform(x: np.ndarray, model: cl.Model):
+    """
+    :param x: densities of stiffness and damping, and masses [dens_stiffness, dens_damping_coefficient, mass]
+    :param model:
+    :return: modified model_.
+    """
+    for element in model.mesh.elements:
+        if element.__str__().split('_')[0] == 'k':
+            element.props['value'] = x[0] * k
+        if element.__str__().split('_')[0] == 'c':
+            element.props['value'] = x[1] * c
+        if element.__str__().split('_')[0] == 'm':
+            element.props['value'] = x[2]
+    return model
+
+
+def opt_obj_fun_override_denskc_m_fg(x: np.ndarray, model: cl.Model):
+    """
+    :param x: densities of stiffnesses and damping_coeficients, and masses
+    [densk_0_1, ..., densk_n-1_n, densc_0_1, ..., densc_n-1_n, m_0_1, ..., m_n-1_n]
+    :param model:
+    :return: modified model_.
+    """
+    n_viscoelastic_elements = model.n_dof - 1
+    for element in model.mesh.elements:
+        for i, k_i_j in enumerate([f"k_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+            if k_i_j in element.aliases():
+                element.props['value'] = x[i] * k
+        for i, c_i_j in enumerate([f"c_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+            if c_i_j in element.aliases():
+                element.props['value'] = x[n_viscoelastic_elements + i] * c
+        for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+            if m_i_j in element.aliases():
+                element.props['value'] = x[2*n_viscoelastic_elements + i]
     return model
 
 

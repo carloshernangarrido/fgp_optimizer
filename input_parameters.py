@@ -69,6 +69,10 @@ total_length = element_length * n_elements
 min_rel, max_rel = 0.01, 1.00
 k, c, gap, kc = kcgapkc_from_al(area=area, length=element_length, material='characterized_viscoelastic_foam')
 # k, c, gap, kc = kcgapkc_from_al(area=area, length=element_length, material='c100times_characterized_viscoelastic_foam')
+
+k = 10*k
+c = 10*c
+
 m = m_from_al(area=area, length=(1/4) * .0254, material='steel')
 min_mass_dof = 0.001 * m
 max_mass_dof = m
@@ -93,10 +97,11 @@ v0 = 0.0
 animate_each = 5
 
 maxiter = 100
-flags = {'obj_fun': 'peak',  # 'peak', 'impulse'
+flags = {'obj_fun': 'impulse',  # 'peak', 'impulse'
+         'fun_override': 'denskc_m',  # 'density', 'denskc_m'
          'opt_uniform': True,
          'opt_fg': True,
          'method': 'differential_evolution',  # 'simplex',  #
          'disp': True,
          'workers': 7}
-opt_id = '01'
+opt_id = '02'
