@@ -128,13 +128,13 @@ def opt_obj_fun_override_density_fg_protstr(x: np.ndarray, model: cl.Model):
     n_viscoelastic_elements = model.n_dof - 1
     for element in model.mesh.elements:
         if element.i != 0:
-            for i, c_i_j in enumerate([f"c_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+            for i, c_i_j in enumerate([f"c_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)]):
                 if c_i_j in element.aliases():
                     element.props['value'] = x[i] * c
-            for i, k_i_j in enumerate([f"k_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+            for i, k_i_j in enumerate([f"k_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)]):
                 if k_i_j in element.aliases():
                     element.props['value'] = x[i] * k
-            for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+            for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)]):
                 if m_i_j in element.aliases():
                     element.props['value'] = x[n_viscoelastic_elements + i]
     return model
@@ -167,15 +167,15 @@ def opt_obj_fun_override_denskc_m_fg_protstr(x: np.ndarray, model: cl.Model):
     n_viscoelastic_elements = model.n_dof - 1
     for element in model.mesh.elements:
         if element.i != 0:
-            for i, k_i_j in enumerate([f"k_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+            for i, k_i_j in enumerate([f"k_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)]):
                 if k_i_j in element.aliases():
-                    element.props['value'] = x[i] * k
-            for i, c_i_j in enumerate([f"c_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+                    element.props['value'] = x[i-1] * k
+            for i, c_i_j in enumerate([f"c_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)]):
                 if c_i_j in element.aliases():
-                    element.props['value'] = x[n_viscoelastic_elements + i] * c
-            for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(n_viscoelastic_elements)]):
+                    element.props['value'] = x[n_viscoelastic_elements-1 + (i-1)] * c
+            for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)]):
                 if m_i_j in element.aliases():
-                    element.props['value'] = x[2*n_viscoelastic_elements + i]
+                    element.props['value'] = x[2*(n_viscoelastic_elements-1) + (i-1)]
     return model
 
 
