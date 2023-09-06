@@ -86,7 +86,7 @@ if __name__ == '__main__':
     logging.info(f"*** base: {opt_uniform.opt_obj_func()}")
     logging.info(f"with: {[element.props['value'] for element in opt_uniform.model.mesh.elements]}")
     _, axs = plt.subplots(4, 1, sharex='all')
-    plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof), impulse=model.impulses(fixed_dof),
+    plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof),
                  d=model.deformations(), v=model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='base', color='blue')
     fig, ax, ani = model.animate(each=animate_each)
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     logging.info(f"with: {[element.props['value'] for element in opt_uniform.model.mesh.elements]}")
     _, axs = plt.subplots(4, 1, sharex='all')
     plot_results(axs, t=opt_uniform.model.sol.t,
-                 f_reaction=opt_uniform.model.reactions(fixed_dof), impulse=opt_uniform.model.impulses(fixed_dof),
+                 f_reaction=opt_uniform.model.reactions(fixed_dof),
                  d=opt_uniform.model.deformations(), v=opt_uniform.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='base', color='blue')
     fig, ax, ani = opt_uniform.model.animate(each=animate_each)
@@ -138,15 +138,15 @@ if __name__ == '__main__':
     logging.info(f"with, {[element.props['value'] for element in opt_fg.model.mesh.elements]}")
 
     _, axs = plt.subplots(4, 1, sharex='all')
-    plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof), impulse=model.impulses(fixed_dof),
+    plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof),
                  d=model.deformations(), v=model.velocities(dof0),
-                 label='base', color='blue')
+                 t_load=t_vector, f_load=force_vector, label='base', color='blue')
     plot_results(axs, t=opt_uniform.model.sol.t,
-                 f_reaction=opt_uniform.model.reactions(fixed_dof), impulse=opt_uniform.model.impulses(fixed_dof),
+                 f_reaction=opt_uniform.model.reactions(fixed_dof),
                  d=opt_uniform.model.deformations(), v=opt_uniform.model.velocities(dof0),
-                 label='opt. uniform', color='red')
+                 t_load=t_vector, f_load=force_vector, label='opt. uniform', color='red')
     plot_results(axs, t=opt_fg.model.sol.t,
-                 f_reaction=opt_fg.model.reactions(fixed_dof), impulse=opt_fg.model.impulses(fixed_dof),
+                 f_reaction=opt_fg.model.reactions(fixed_dof),
                  d=opt_fg.model.deformations(), v=opt_fg.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='opt FG', color='green')
     fig, ax, ani = opt_fg.model.animate(each=animate_each)
