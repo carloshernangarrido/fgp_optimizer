@@ -13,13 +13,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-n_dof = 5
+n_dof = 11
 area = 0.3 * 0.3  # m^2
 
-# Weigth for deformations
-max_def_restriction = .020
-lambda_ = 1e3*140000/max_def_restriction  # peak
-# lambda_ = 1e3*100/max_def_restriction  # impulse
+max_def_restriction_m024 = .020
 
 # Loading
 scale = 1.0
@@ -66,15 +63,13 @@ protected_structure = {'m': 57.6*2/np.pi, 'k': (57.6*2/np.pi)*(2*np.pi*120)**2, 
 # Protection design
 n_elements = n_dof - 1
 load_dof = n_dof - 1
-element_length = .024  # m
+element_length = .024 * 3/(n_elements-1)  # m
 total_length = element_length * n_elements
+max_def_restriction = max_def_restriction_m024 * 3/(n_elements-1)
 
 min_rel, max_rel = 0.01, 1.00
 k, c, gap, kc = kcgapkc_from_al(area=area, length=element_length, material='characterized_viscoelastic_foam')
 # k, c, gap, kc = kcgapkc_from_al(area=area, length=element_length, material='c100times_characterized_viscoelastic_foam')
-
-k = 10*k
-c = 10*c
 
 m = m_from_al(area=area, length=(1/4) * .0254, material='steel')
 min_mass_dof = 0.001 * m
@@ -99,12 +94,21 @@ v0 = 0.0
 
 animate_each = 5
 
-maxiter = 100
+# Weigth for deformations
+lambda_ = 1e3*140000/max_def_restriction  # peak
+# lambda_ = 1e3*100/max_def_restriction  # impulse
+
+maxiter = 1000
 flags = {'obj_fun': 'peak',  # 'peak', 'impulse'
-         'fun_override': 'denskc_m',  # 'density', 'denskc_m'
-         'opt_uniform': False,
-         'opt_fg': False,
+         'fun_override': 'density',  # 'density', 'denskc_m'
+         'opt_uniform': True,
+         'opt_fg': True,
          'method': 'differential_evolution',  # 'simplex',  #
          'disp': True,
          'workers': 7}
-opt_id = '00'
+
+if flags['fun_override'] == 'denskc_m':
+    k = 10 * k
+    c = 10 * c
+
+opt_id = '03'

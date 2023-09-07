@@ -5,7 +5,7 @@ import sys
 
 from models import chain_like as cl
 from optimization import optimizers as optim
-from plotting.results import plot_results
+from plotting.results import plot_results, plot_fg
 
 if __name__ == '__main__':
     from input_parameters import *
@@ -138,17 +138,19 @@ if __name__ == '__main__':
     logging.info(f"with, {[element.props['value'] for element in opt_fg.model.mesh.elements]}")
 
     _, axs = plt.subplots(4, 1, sharex='all')
+    __, axs_fg = plt.subplots(3, 1, sharex='all')
     plot_results(axs, t=model.sol.t, f_reaction=model.reactions(fixed_dof),
                  d=model.deformations(), v=model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='base', color='blue')
-    plot_results(axs, t=opt_uniform.model.sol.t,
-                 f_reaction=opt_uniform.model.reactions(fixed_dof),
+    plot_fg(axs_fg, model=model, label='baseline')
+    plot_results(axs, t=opt_uniform.model.sol.t, f_reaction=opt_uniform.model.reactions(fixed_dof),
                  d=opt_uniform.model.deformations(), v=opt_uniform.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='opt. uniform', color='red')
-    plot_results(axs, t=opt_fg.model.sol.t,
-                 f_reaction=opt_fg.model.reactions(fixed_dof),
+    plot_fg(axs_fg, model=opt_uniform.model, label='uniform')
+    plot_results(axs, t=opt_fg.model.sol.t, f_reaction=opt_fg.model.reactions(fixed_dof),
                  d=opt_fg.model.deformations(), v=opt_fg.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='opt FG', color='green')
+    plot_fg(axs_fg, model=opt_fg.model, label='functionally graded')
     fig, ax, ani = opt_fg.model.animate(each=animate_each)
     plt.show()
     ...
