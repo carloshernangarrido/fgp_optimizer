@@ -109,7 +109,7 @@ def opt_obj_fun_override_density_uniform_protstr(x: np.ndarray, model: cl.Model)
     :return: modified model_.
     """
     for element in model.mesh.elements:
-        if element.i != 0:
+        if element.j != 1:
             if element.__str__().split('_')[0] == 'c':
                 element.props['value'] = x[0] * c
             if element.__str__().split('_')[0] == 'k':
@@ -134,7 +134,9 @@ def opt_obj_fun_override_density_fg_protstr(x: np.ndarray, model: cl.Model):
             for i, k_i_j in enumerate([f"k_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)]):
                 if k_i_j in element.aliases():
                     element.props['value'] = x[i] * k
-            for i, m_i_j in enumerate([f"m_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)]):
+            masses_list = [f"m_{i}_{i + 1}" for i in range(1, n_viscoelastic_elements)] \
+                if not model.mesh.lumped_masses else [f"m_{i+1}_{i+1}" for i in range(1, n_viscoelastic_elements)]
+            for i, m_i_j in enumerate(masses_list):
                 if m_i_j in element.aliases():
                     element.props['value'] = x[n_viscoelastic_elements-1 + (i-1)]
     return model

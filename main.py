@@ -36,7 +36,7 @@ if __name__ == '__main__':
     logging.info(f"{peak_force=} N, {applied_impulse=} Ns")
 
     # Initial model
-    mesh = (cl.Mesh(total_length, n_dof))
+    mesh = (cl.Mesh(total_length, n_dof, lumped_masses=flags['lumped_masses']))
     mesh.fill_elements('k', k) \
         .fill_elements('penalty_gap', penalty_gap) \
         .fill_elements('c', c) \
@@ -48,9 +48,13 @@ if __name__ == '__main__':
     try:
         logging.info(f'protected_structure is defined as {protected_structure}')
         for element in mesh.elements:
-            if element.element_type == 'm' and element.i == 0 and element.j == 1:
-                element.props['value'] = protected_structure['m']*2  # half of this mass is lost in the fix support
-            elif element.element_type == 'k' and element.i == 0 and element.j == 1:
+            if mesh.lumped_masses:
+                if element.element_type == 'm' and element.i == 1 and element.j == 1:
+                    element.props['value'] = protected_structure['m']  # all of this mass is lumped in the dof with the larger index (i.e, 1)
+            else:
+                if element.element_type == 'm' and element.i == 0 and element.j == 1:
+                    element.props['value'] = protected_structure['m']*2  # half of this mass is lost in the fix support
+            if element.element_type == 'k' and element.i == 0 and element.j == 1:
                 element.props['value'] = protected_structure['k']
             elif element.element_type == 'c' and element.i == 0 and element.j == 1:
                 element.props['value'] = protected_structure['c']
@@ -82,7 +86,8 @@ if __name__ == '__main__':
     opt_uniform = optim.ConstructiveOptimization(base_model=model.deepcopy(), obj_fun=obj_fun,
                                                  lb_values=lb_values_uniform, ub_values=ub_values_uniform,
                                                  opt_obj_fun_override=opt_obj_fun_override_uniform,
-                                                 restrictions_fun=restriction_fun_uniform)
+                                                 restrictions_fun=restriction_fun_uniform,
+                                                 obj_fun_scaling=obj_fun_scaling)
     logging.info(f"*** base: {opt_uniform.opt_obj_func()}")
     logging.info(f"with: {[element.props['value'] for element in opt_uniform.model.mesh.elements]}")
     _, axs = plt.subplots(4, 1, sharex='all')
@@ -127,7 +132,8 @@ if __name__ == '__main__':
                                                 lb_values=lb_values_fg, ub_values=ub_values_fg,
                                                 opt_obj_fun_override=opt_obj_fun_override_fg,
                                                 initial_guess=initial_guess,
-                                                restrictions_fun=restriction_fun_fg)
+                                                restrictions_fun=restriction_fun_fg,
+                                                obj_fun_scaling=obj_fun_scaling)
         opt_fg.optimize(maxiter=maxiter, disp=flags['disp'], method=flags['method'], workers=flags['workers'])
         with open(f'opt_fg_{opt_id}.pk', 'wb') as file:
             pickle.dump(opt_fg, file)
@@ -151,6 +157,6 @@ if __name__ == '__main__':
                  d=opt_fg.model.deformations(), v=opt_fg.model.velocities(dof0),
                  t_load=t_vector, f_load=force_vector, label='opt FG', color='green')
     plot_fg(axs_fg, model=opt_fg.model, label='functionally graded')
-    fig, ax, ani = opt_fg.model.animate(each=animate_each)
     plt.show()
+    fig, ax, ani = opt_fg.model.animate(each=animate_each)
     ...

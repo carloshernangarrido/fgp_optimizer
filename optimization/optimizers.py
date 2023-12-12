@@ -7,7 +7,8 @@ from scipy.optimize import differential_evolution, Bounds, minimize
 
 
 class BaseOptimization:
-    def __init__(self, base_model: Model, obj_fun: callable, opt_obj_fun_override: callable):
+    def __init__(self, base_model: Model, obj_fun: callable, opt_obj_fun_override: callable,
+                 obj_fun_scaling: float = 1.0):
         assert isinstance(base_model, Model) and callable(obj_fun)
         self.model = base_model
         self.obj_func = obj_fun
@@ -16,6 +17,8 @@ class BaseOptimization:
         self.bounds = None
         self.initial_guess = None
         self.result = None
+
+        self.obj_fun_scaling = obj_fun_scaling
 
         assert callable(opt_obj_fun_override) or opt_obj_fun_override is None, \
             "opt_obj_fun_override must be callable or None"
@@ -40,7 +43,7 @@ class BaseOptimization:
 
 class Optimization(BaseOptimization):
     def __init__(self, base_model: Model, obj_fun: callable, lb: dict, ub: dict, uniform: bool = False,
-                 opt_obj_fun_override: callable = None):
+                 opt_obj_fun_override: callable = None, obj_fun_scaling: float = 1.0):
         """
         Class for optimization of models.
 
@@ -49,6 +52,7 @@ class Optimization(BaseOptimization):
         :param lb:
         :param ub:
         :param uniform:
+        :param obj_fun_scaling: number to scale the value of the objective function
         :param opt_obj_fun_override: a callable that accepts x (the optimization vector) and a model, and returns the
         model with modified parameters. It must have the following signature:
 
@@ -56,7 +60,7 @@ class Optimization(BaseOptimization):
         >>>     ...
         >>>     return model
         """
-        super().__init__(base_model, obj_fun, opt_obj_fun_override)
+        super().__init__(base_model, obj_fun, opt_obj_fun_override, obj_fun_scaling=obj_fun_scaling)
 
         assert isinstance(lb, dict) and isinstance(ub, dict)
         assert lb.keys() == ub.keys(), 'upper bound and lower bound must refer to the same parameters'
@@ -88,7 +92,7 @@ class Optimization(BaseOptimization):
             self.model.update_model()
             self.model.solve()
             self.model_list.append(self.model.deepcopy())
-            return self.obj_func(self.model)
+            return self.obj_fun_scaling*self.obj_func(self.model)
         if self.opt_obj_fun_override is None:
             for i_x, element_name in enumerate(self.parameters):
                 if self.uniform:
@@ -104,7 +108,7 @@ class Optimization(BaseOptimization):
             self.model.update_model()
             self.model.solve()
             self.model_list.append(self.model.deepcopy())
-            return self.obj_func(self.model)
+            return self.obj_fun_scaling*self.obj_func(self.model)
         else:
             ret = self.opt_obj_fun_override(x, self.model)
             if isinstance(ret, Model):
@@ -112,7 +116,7 @@ class Optimization(BaseOptimization):
                 self.model.update_model()
                 self.model.solve()
                 self.model_list.append(self.model.deepcopy())
-                return self.obj_func(self.model)
+                return self.obj_fun_scaling*self.obj_func(self.model)
             else:  # restriction was violated
                 return np.inf
 
@@ -121,7 +125,7 @@ class ConstructiveOptimization(BaseOptimization):
     def __init__(self, base_model: Model, obj_fun: callable,
                  lb_values: Union[list, np.ndarray], ub_values: Union[list, np.ndarray],
                  opt_obj_fun_override: callable, initial_guess: Union[list, np.ndarray] = None,
-                 restrictions_fun: callable = None):
+                 restrictions_fun: callable = None, obj_fun_scaling: float = 1.0):
         """
 
         :param base_model:
@@ -133,7 +137,7 @@ class ConstructiveOptimization(BaseOptimization):
         :param restrictions_fun: restriction is violated if restriction_fun(x) > 0. x is in the feasible domain if
         restriction_fun(x) <= 0.
         """
-        super().__init__(base_model, obj_fun, opt_obj_fun_override)
+        super().__init__(base_model, obj_fun, opt_obj_fun_override, obj_fun_scaling=obj_fun_scaling)
         assert callable(opt_obj_fun_override), "opt_obj_fun_override must be provided"
         assert np.ndim(lb_values) == 1 and np.ndim(ub_values) == 1, "lb_values and up_values must be 1D array like"
         assert len(lb_values) == len(ub_values), "lb_values and up_values must be the same length"
@@ -151,7 +155,7 @@ class ConstructiveOptimization(BaseOptimization):
             self.model.update_model()
             self.model.solve()
             self.model_list.append(self.model.deepcopy())
-            return self.obj_func(self.model)
+            return self.obj_fun_scaling*self.obj_func(self.model)
 
         if self.restriction_fun(x) > 0:  # restriction was violated
             return np.inf
@@ -161,6 +165,6 @@ class ConstructiveOptimization(BaseOptimization):
             self.model.update_model()
             self.model.solve()
             self.model_list.append(self.model.deepcopy())
-            return self.obj_func(self.model)
+            return self.obj_fun_scaling*self.obj_func(self.model)
         else:  # restriction was violated
             return np.inf

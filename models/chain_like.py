@@ -137,23 +137,27 @@ class Element:
 
 
 class Mesh:
-    def __init__(self, length: Union[float, int], n_dof: int, total_mass: Union[float, int] = None):
+    def __init__(self, length: Union[float, int], n_dof: int, total_mass: Union[float, int] = None,
+                 lumped_masses: bool = False):
         """
         Creates a Mesh object that represents a 1D deformable body.
 
         :param total_mass: Total mass of the body
         :param length: Total length of the body
         :param n_dof: Number of degrees of freedom.
+        :param lumped_masses: If True, the element mass is lumped in the DOF with larger index
         """
         assert isinstance(length, (int, float)) and length > 0
         assert isinstance(n_dof, int) and n_dof > 0
 
         self.n_dof = n_dof
         self.coordinates = np.linspace(0, length, n_dof)
+        self.lumped_masses = lumped_masses
         if total_mass is not None:
             assert isinstance(total_mass, (int, float))  # and total_mass > 0
             element_mass = total_mass / (n_dof - 1)
-            self.elements = [Element('m', i=i, j=i + 1, props=element_mass) for i in range(self.n_dof - 1)]
+            self.elements = [Element('m', i=i + 1 if self.lumped_masses else i, j=i + 1, props=element_mass)
+                             for i in range(self.n_dof - 1)]
         else:
             self.elements = []
 
@@ -170,12 +174,16 @@ class Mesh:
 
         if isinstance(props_s, list) and len(props_s) == self.n_dof - 1:
             for i, props in enumerate(props_s):
-                self.elements.append(Element(element_type, i=i, j=i + 1, props=props))
+                self.elements.append(Element(element_type,
+                                             i=i + 1 if (self.lumped_masses and element_type == 'm') else i,
+                                             j=i + 1, props=props))
         elif isinstance(props_s, (float, int, dict)):
             for i in range(self.n_dof - 1):
                 if isinstance(props_s, dict):
                     props_s = props_s.copy()
-                self.elements.append((Element(element_type, i=i, j=i + 1, props=props_s)))
+                self.elements.append((Element(element_type,
+                                              i=i + 1 if (self.lumped_masses and element_type == 'm') else i,
+                                              j=i + 1, props=props_s)))
         else:
             raise TypeError
         return self
@@ -297,6 +305,8 @@ class Model:
         for constraint in self.constraints:
             if constraint.constraint_type == 'fixed_dof':
                 self.constraining.extend(constraint.dof_s)
+        for i_const in self.constraining:
+            self.dof_masses[i_const] = 1
         # Solution
         self.sol = None
 

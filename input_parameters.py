@@ -13,27 +13,56 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-n_dof = 11
+n_dof = 5
 area = 0.3 * 0.3  # m^2
 
 max_def_restriction_m024 = .020
 
 # Loading
+radial_integration_flag = True
+radial_increment = 0.050
 scale = 1.0
 times_t = 2
 subsampling = 10
 loading_path = r"C:\Users\joses\Mi unidad\TRABAJO\48_FG_protection\TRABAJO\loadings"
 loading_filename = r"Ident 0 - 2d-1-5kg-0-52m01.uhs"
 loading_df = pd.read_csv(os.path.join(loading_path, loading_filename), skiprows=2)
-loading_df = loading_df.loc[:, (loading_df.columns.str.strip() == 'TIME (ms)') |
-                               (loading_df.columns.str.strip() == 'PRESSURE')]
-loading_df.loc[:, loading_df.columns.str.strip() == 'TIME (ms)'] = .001 * loading_df.loc[:,
-                                                                          loading_df.columns.str.strip() == 'TIME (ms)']
-loading_df.loc[:, loading_df.columns.str.strip() == 'PRESSURE'] = 1000 * loading_df.loc[:,
-                                                                         loading_df.columns.str.strip() == 'PRESSURE']
-loading_df.columns = ('time', 'pressure')
-loading_df.loc[:, 'pressure'] = loading_df.loc[:, 'pressure'] - loading_df.loc[0, 'pressure']
-force_vector = area * loading_df['pressure'].values
+if not radial_integration_flag:
+    loading_df = loading_df.loc[:, (loading_df.columns.str.strip() == 'TIME (ms)') |
+                                   (loading_df.columns.str.strip() == 'PRESSURE')]
+    loading_df.loc[:, loading_df.columns.str.strip() == 'TIME (ms)'] = .001 * loading_df.loc[:,
+                                                                              loading_df.columns.str.strip() == 'TIME (ms)']
+    loading_df.loc[:, loading_df.columns.str.strip() == 'PRESSURE'] = 1000 * loading_df.loc[:,
+                                                                             loading_df.columns.str.strip() == 'PRESSURE']
+    loading_df.columns = ('time', 'pressure')
+    loading_df.loc[:, 'pressure'] = loading_df.loc[:, 'pressure'] - loading_df.loc[0, 'pressure']
+
+    force_vector = area * loading_df['pressure'].values
+else:
+    loading_df = loading_df.iloc[:, 1:]
+    loading_df.loc[:, loading_df.columns.str.strip() == 'TIME (ms)'] = .001 * loading_df.loc[:,
+                                                                              loading_df.columns.str.strip() == 'TIME (ms)']
+    for i in range(1, len(loading_df.columns)):
+        loading_df.iloc[:, i] = 1000 * loading_df.iloc[:, i]
+    loading_df.columns = ['time', ] + [f'pressure.{i}' for i in range(len(loading_df.columns) - 1)]
+
+    # Equivalent radius (area = pi r^2)
+    r_max = np.sqrt(area / np.pi)
+    i_max = int(1+(r_max/radial_increment))
+
+    radial_positions = [0.050 * _ for _ in range(i_max)]
+    force_vector = 0.0*loading_df['time'].values.reshape((-1, 1))
+    for i in range(1, len(radial_positions)):
+        p1 = loading_df.iloc[:, i].values.reshape((-1, 1))
+        p2 = loading_df.iloc[:, i + 1].values.reshape((-1, 1))
+        r1 = radial_positions[i - 1]
+        r2 = radial_positions[i]
+        kp = (p2-p1)/(r2-r1)
+        force_vector += (p1 - kp*r1)*np.pi*(r2**2 - r1**2) + kp * (2/3) * np.pi* (r2**3 - r1**3)
+    force_vector = force_vector.reshape((-1,))
+# plt.plot(force_vector)
+# plt.show()
+
 # time
 t_ini = loading_df.iloc[0]['time']
 t_fin = loading_df.iloc[-1]['time']
@@ -98,17 +127,22 @@ animate_each = 5
 lambda_ = 1e3*140000/max_def_restriction  # peak
 # lambda_ = 1e3*100/max_def_restriction  # impulse
 
+# optimization options
 maxiter = 1000
+obj_fun_scaling = 10e-8
+
+
 flags = {'obj_fun': 'peak',  # 'peak', 'impulse'
          'fun_override': 'density',  # 'density', 'denskc_m'
+         'lumped_masses': True,
          'opt_uniform': True,
          'opt_fg': True,
-         'method': 'differential_evolution',  # 'simplex',  #
+         'method': 'differential_evolution',  #'simplex',  #
          'disp': True,
-         'workers': 7}
+         'workers': 8}
 
 if flags['fun_override'] == 'denskc_m':
     k = 10 * k
     c = 10 * c
 
-opt_id = '03'
+opt_id = '05'
