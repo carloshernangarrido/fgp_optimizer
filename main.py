@@ -159,4 +159,4 @@ if __name__ == '__main__':
     plot_fg(axs_fg, model=opt_fg.model, label='functionally graded')
     plt.show()
     fig, ax, ani = opt_fg.model.animate(each=animate_each)
-    ...
+

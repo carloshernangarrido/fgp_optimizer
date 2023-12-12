@@ -37,11 +37,11 @@ def plot_fg(axs, model: Model, label: str = ""):
         m_pos.append(model.mesh.coordinates[m_pos_])
         m_val.append(m_val_)
     axs[0].set_ylabel('stiffness (N/m)')
-    axs[0].legend()
     axs[0].plot(k_pos, k_val, label=label)
     axs[1].set_ylabel('damping coefficient (Ns/m)')
     axs[1].plot(c_pos, c_val)
     axs[2].set_ylabel('mass (kg)')
     axs[2].plot(m_pos, m_val, linestyle='', marker='x')
     [axs[i].grid() for i in range(3)]
+    axs[0].legend()
 
