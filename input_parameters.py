@@ -129,7 +129,7 @@ lambda_ = 1e3*140000/max_def_restriction  # peak
 
 # optimization options
 maxiter = 1000
-obj_fun_scaling = 10e-8
+obj_fun_scaling = scale * 10e-8
 
 
 flags = {'obj_fun': 'peak',  # 'peak', 'impulse'
