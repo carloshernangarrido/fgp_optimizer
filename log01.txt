@@ -1,0 +1,121 @@
+2023-09-06 10:33:55 INFO     
+"""
+Input parameters for 3 visco-elastic foam plates separated by steel plates.
+foam plate area = 0.3 m x 0.3 m
+foam plate thickness = 0.024 m
+steel plate thickness = 1/4 x 0.0254 m
+"""
+import numpy as np
+
+from material_properties import kcgapkc_from_al, m_from_al
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+n_dof = 5
+area = 0.3 * 0.3  # m^2
+
+# Weigth for deformations
+max_def_restriction = .020
+lambda_ = 1e3*140000/max_def_restriction  # peak
+# lambda_ = 1e3*100/max_def_restriction  # impulse
+
+# Loading
+scale = 1.0
+times_t = 2
+subsampling = 10
+loading_path = r"C:\Users\joses\Mi unidad\TRABAJO\48_FG_protection\TRABAJO\loadings"
+loading_filename = r"Ident 0 - 2d-1-5kg-0-52m01.uhs"
+loading_df = pd.read_csv(os.path.join(loading_path, loading_filename), skiprows=2)
+loading_df = loading_df.loc[:, (loading_df.columns.str.strip() == 'TIME (ms)') |
+                               (loading_df.columns.str.strip() == 'PRESSURE')]
+loading_df.loc[:, loading_df.columns.str.strip() == 'TIME (ms)'] = .001 * loading_df.loc[:,
+                                                                          loading_df.columns.str.strip() == 'TIME (ms)']
+loading_df.loc[:, loading_df.columns.str.strip() == 'PRESSURE'] = 1000 * loading_df.loc[:,
+                                                                         loading_df.columns.str.strip() == 'PRESSURE']
+loading_df.columns = ('time', 'pressure')
+loading_df.loc[:, 'pressure'] = loading_df.loc[:, 'pressure'] - loading_df.loc[0, 'pressure']
+force_vector = area * loading_df['pressure'].values
+# time
+t_ini = loading_df.iloc[0]['time']
+t_fin = loading_df.iloc[-1]['time']
+t_vector = loading_df['time'].values
+
+for i in range(times_t):
+    force_vector = scale * np.hstack((force_vector, 0 * force_vector[1:-1]))
+    t_vector = np.hstack((t_vector, t_vector[1:-1] + t_vector[-1]))
+
+if subsampling is not None:
+    t_vector = t_vector[0::subsampling]
+    force_vector = force_vector[0::subsampling]
+# plots
+# _, axs = plt.subplots(2, 1)
+# axs[0].plot(loading_df['time'], loading_df['pressure'])
+# axs[0].set_ylabel('pressure (Pa)')
+# axs[1].plot(t_vector, force_vector)
+# axs[1].set_ylabel('force (N)')
+# axs[1].set_xlabel('time (s)')
+# plt.show()
+peak_force = max(force_vector)
+applied_impulse = np.trapz(y=force_vector, x=t_vector)
+
+# Protected structure
+protected_structure = {'m': 57.6*2/np.pi, 'k': (57.6*2/np.pi)*(2*np.pi*120)**2, 'c': 0}
+
+# Protection design
+n_elements = n_dof - 1
+load_dof = n_dof - 1
+element_length = .024  # m
+total_length = element_length * n_elements
+
+min_rel, max_rel = 0.01, 1.00
+k, c, gap, kc = kcgapkc_from_al(area=area, length=element_length, material='characterized_viscoelastic_foam')
+# k, c, gap, kc = kcgapkc_from_al(area=area, length=element_length, material='c100times_characterized_viscoelastic_foam')
+
+# k = 10*k
+# c = 10*c
+
+m = m_from_al(area=area, length=(1/4) * .0254, material='steel')
+min_mass_dof = 0.001 * m
+max_mass_dof = m
+max_mass_total = m
+
+# Compaction
+penalty_gap = {'value': gap,
+               'contact_stiffness': kc,
+               'penetration': 0.01 * gap}
+
+k_with_failure = {'value': k,
+                  'allowable_deformation': 1.0 * element_length}
+
+# Constraints
+fixed_dof = 0
+
+# Initial conditions
+dof0 = load_dof
+d0 = 0.0
+v0 = 0.0
+
+animate_each = 5
+
+maxiter = 100
+flags = {'obj_fun': 'peak',  # 'peak', 'impulse'
+         'fun_override': 'density',  # 'density', 'denskc_m'
+         'opt_uniform': False,
+         'opt_fg': False,
+         'method': 'differential_evolution',  # 'simplex',  #
+         'disp': True,
+         'workers': 7}
+opt_id = '01'
+
+2023-09-06 10:33:55 INFO     peak_force=1563720.1199999999 N, applied_impulse=88.31195486732493 Ns
+2023-09-06 10:33:55 INFO     protected_structure is defined as {'m': 36.66929888837269, 'k': 20846100.88474814, 'c': 0}
+2023-09-06 10:33:56 INFO     *** Initial model *** Elapsed time: 0:00:01.317636
+2023-09-06 10:33:58 INFO     *** base: 283040832.0852462
+2023-09-06 10:33:58 INFO     with: [20846100.88474814, 100000.0, 100000.0, 100000.0, 0.015, 0.015, 0.015, 0.015, 0, 2000.0, 2000.0, 2000.0, 73.33859777674537, 0.0044862750000000005, 0.0044862750000000005, 0.0044862750000000005]
+2023-09-06 10:34:52 INFO     *** uniform optimal: 196708348.24233085
+2023-09-06 10:34:52 INFO     with: [20846100.88474814, 99996.7349354868, 99996.7349354868, 99996.7349354868, 0.015, 0.015, 0.015, 0.015, 0, 1999.9346987097363, 1999.9346987097363, 1999.9346987097363, 73.33859777674537, 1.487756215601453, 1.487756215601453, 1.487756215601453]
+2023-09-06 10:36:05 INFO     *** functionally graded optimal: 152263991.30862382
+2023-09-06 10:36:05 INFO     with, [20846100.88474814, 99315.0450564651, 98103.87283074963, 99324.84527157637, 0.015, 0.015, 0.015, 0.015, 0, 1986.300901129302, 1962.0774566149926, 1986.4969054315272, 73.33859777674537, 0.9932484527157637, 0.04793072006144028, 4.381204195669093]
+2023-09-06 10:36:05 WARNING  No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
